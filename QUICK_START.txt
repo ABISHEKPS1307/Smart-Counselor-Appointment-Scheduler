@@ -1,0 +1,86 @@
+================================================================================
+    SMART COUNSELOR APPOINTMENT SCHEDULER - QUICK START GUIDE
+================================================================================
+
+STEP 1: INSTALL DEPENDENCIES
+----------------------------
+Open PowerShell/Terminal in this folder and run:
+
+    npm install
+
+STEP 2: LOGIN TO AZURE
+----------------------
+    az login --use-device-code
+
+Follow the browser prompts to authenticate.
+
+STEP 3: ADD YOUR IP TO FIREWALL
+-------------------------------
+Find your IP address (the error will show it), then run:
+
+    az sql server firewall-rule create --resource-group CloudProjectNew --server scmainserver --name "MyIP" --start-ip-address YOUR_IP --end-ip-address YOUR_IP
+
+Replace YOUR_IP with your actual IP address.
+Wait 2-5 minutes for the rule to take effect.
+
+STEP 4: START THE SERVER
+------------------------
+    npm run dev
+
+Expected output:
+  ✅ Database connected successfully
+  🚀 Server started on port 8080
+  ✅ Server is ready to accept connections
+
+STEP 5: OPEN IN BROWSER
+-----------------------
+Navigate to: http://localhost:8080
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ERROR: Database connection failed
+---------------------------------
+Your IP address changed. Run step 3 again with your new IP.
+
+ERROR: Port 8080 already in use
+-------------------------------
+Kill the existing process or change PORT in .env file.
+
+ERROR: Module not found
+-----------------------
+Run: npm install
+
+================================================================================
+FEATURES
+================================================================================
+
+✓ Register as Student or Counselor
+✓ Login with email/password
+✓ Book appointments (Students)
+✓ View appointments (Both)
+✓ AI Assistant for guidance
+✓ Professional UI with modern design
+
+================================================================================
+SAMPLE CREDENTIALS (for testing)
+================================================================================
+
+After registration, use your own credentials.
+Default password format: minimum 8 characters
+
+================================================================================
+DOCUMENTATION
+================================================================================
+
+- Full Setup Guide:     SETUP_INSTRUCTIONS.md
+- Main Documentation:   README.md
+- Azure Deployment:     AZURE_SETUP_GUIDE.md
+- API Docs:             http://localhost:8080/api-docs
+
+================================================================================
+
+Need help? Check SETUP_INSTRUCTIONS.md for detailed information.
+
+================================================================================

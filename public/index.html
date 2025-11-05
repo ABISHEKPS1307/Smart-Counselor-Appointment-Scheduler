@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="description" content="Smart Counselor Appointment Scheduler - Connect with expert counselors for academic, career, and personal guidance powered by AI.">
+    <meta name="keywords" content="counselor, appointment, scheduler, AI assistant, academic counseling, career guidance">
+    <meta name="author" content="Smart Counselor Scheduler Team">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Smart Counselor Appointment Scheduler">
+    <meta property="og:description" content="Connect with expert counselors for academic, career, and personal guidance powered by AI.">
+    
+    <title>Smart Counselor Appointment Scheduler</title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/static/styles.css">
+    
+    <!-- Lucide Icons CDN for better visual clarity -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <h1 class="logo">
+                <span role="img" aria-label="Education icon">🎓</span>
+                Smart Counselor Scheduler
+            </h1>
+            <nav class="nav" id="mainNav" role="navigation" aria-label="Main navigation">
+                <button class="btn btn-primary" id="loginBtn" aria-label="Login to your account">
+                    <i data-lucide="log-in" class="icon" aria-hidden="true"></i>
+                    <span>Login</span>
+                </button>
+                <button class="btn btn-secondary" id="registerBtn" aria-label="Register a new account">
+                    <i data-lucide="user-plus" class="icon" aria-hidden="true"></i>
+                    <span>Register</span>
+                </button>
+                <div class="user-menu" id="userMenu" style="display: none;" role="navigation" aria-label="User menu">
+                    <span id="userName" aria-live="polite"></span>
+                    <button class="btn btn-sm" id="logoutBtn" aria-label="Logout from your account">
+                        <i data-lucide="log-out" class="icon" aria-hidden="true"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="main-content" role="main">
+        <!-- Welcome Section (default view) -->
+        <section id="welcomeSection" class="section">
+            <div class="container">
+                <div class="hero">
+                    <h2>Welcome to Smart Counselor Appointment Scheduler</h2>
+                    <p>Connect with expert counselors for academic, career, and personal guidance powered by AI.</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-large btn-primary" onclick="showSection('bookingSection')">Book Appointment</button>
+                        <button class="btn btn-large btn-secondary" onclick="showSection('counselorsSection')">View Counselors</button>
+                    </div>
+                </div>
+                <div class="features">
+                    <div class="feature-card">
+                        <span class="feature-icon">📅</span>
+                        <h3>Easy Scheduling</h3>
+                        <p>Book appointments with counselors in just a few clicks</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">🤖</span>
+                        <h3>AI Assistant</h3>
+                        <p>Get intelligent recommendations and guidance</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">👥</span>
+                        <h3>Expert Counselors</h3>
+                        <p>Access to specialized academic and career counselors</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Login Section -->
+        <section id="loginSection" class="section" style="display: none;" aria-labelledby="loginHeading">
+            <div class="container">
+                <div class="form-container">
+                    <h2 id="loginHeading">Login</h2>
+                    <form id="loginForm" aria-describedby="loginError" novalidate>
+                        <div class="form-group">
+                            <label for="loginUserType">User Type</label>
+                            <select id="loginUserType" class="form-control" aria-label="Select your user type">
+                                <option value="student">Student</option>
+                                <option value="counselor">Counselor</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginEmail">Email Address</label>
+                            <input 
+                                type="email" 
+                                id="loginEmail" 
+                                class="form-control" 
+                                required 
+                                autocomplete="email"
+                                placeholder="your.email@university.edu"
+                                aria-required="true"
+                                aria-describedby="loginError">
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Password</label>
+                            <input 
+                                type="password" 
+                                id="loginPassword" 
+                                class="form-control" 
+                                required 
+                                autocomplete="current-password"
+                                aria-required="true"
+                                aria-describedby="loginError">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i data-lucide="log-in" class="icon" aria-hidden="true"></i>
+                                <span>Login</span>
+                            </button>
+                            <button type="button" class="btn btn-link" onclick="showSection('registerSection')">
+                                Need an account? Register
+                            </button>
+                        </div>
+                    </form>
+                    <div id="loginError" class="error-message" role="alert" aria-live="assertive"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Registration Section -->
+        <section id="registerSection" class="section" style="display: none;" aria-labelledby="registerHeading">
+            <div class="container">
+                <div class="form-container">
+                    <h2 id="registerHeading">Register</h2>
+                    <form id="registerForm" aria-describedby="registerError registerSuccess" novalidate>
+                        <div class="form-group">
+                            <label for="registerUserType">User Type</label>
+                            <select id="registerUserType" class="form-control" onchange="toggleCounselorFields()" aria-label="Select your user type">
+                                <option value="student">Student</option>
+                                <option value="counselor">Counselor</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerName">Full Name</label>
+                            <input 
+                                type="text" 
+                                id="registerName" 
+                                class="form-control" 
+                                required 
+                                autocomplete="name"
+                                placeholder="John Doe"
+                                aria-required="true">
+                        </div>
+                        <div class="form-group">
+                            <label for="registerEmail">Email Address</label>
+                            <input 
+                                type="email" 
+                                id="registerEmail" 
+                                class="form-control" 
+                                required 
+                                autocomplete="email"
+                                placeholder="your.email@university.edu"
+                                aria-required="true">
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">Password (min 8 characters)</label>
+                            <input 
+                                type="password" 
+                                id="registerPassword" 
+                                class="form-control" 
+                                required 
+                                minlength="8"
+                                autocomplete="new-password"
+                                aria-required="true"
+                                aria-describedby="passwordHelp">
+                            <small id="passwordHelp" class="form-text">Must be at least 8 characters long</small>
+                        </div>
+                        <div id="counselorFields" style="display: none;" aria-live="polite">
+                            <div class="form-group">
+                                <label for="counselorType">Counselor Type</label>
+                                <select id="counselorType" class="form-control" aria-label="Select counselor specialization">
+                                    <option value="Academic">Academic</option>
+                                    <option value="Career">Career</option>
+                                    <option value="Personal">Personal</option>
+                                    <option value="Mental Health">Mental Health</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="counselorBio">Bio</label>
+                                <textarea 
+                                    id="counselorBio" 
+                                    class="form-control" 
+                                    rows="3"
+                                    placeholder="Tell us about your experience and expertise..."
+                                    aria-label="Counselor bio description"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i data-lucide="user-plus" class="icon" aria-hidden="true"></i>
+                                <span>Register</span>
+                            </button>
+                            <button type="button" class="btn btn-link" onclick="showSection('loginSection')">
+                                Already have an account? Login
+                            </button>
+                        </div>
+                    </form>
+                    <div id="registerError" class="error-message" role="alert" aria-live="assertive"></div>
+                    <div id="registerSuccess" class="success-message" role="status" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Counselors List Section -->
+        <section id="counselorsSection" class="section" style="display: none;">
+            <div class="container">
+                <h2>Our Counselors</h2>
+                <div class="filter-bar">
+                    <select id="counselorTypeFilter" class="form-control" onchange="filterCounselors()">
+                        <option value="">All Types</option>
+                        <option value="Academic">Academic</option>
+                        <option value="Career">Career</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Mental Health">Mental Health</option>
+                    </select>
+                </div>
+                <div id="counselorsList" class="counselors-grid"></div>
+            </div>
+        </section>
+
+        <!-- Booking Section -->
+        <section id="bookingSection" class="section" style="display: none;">
+            <div class="container">
+                <div class="form-container">
+                    <h2>Book Appointment</h2>
+                    <form id="bookingForm">
+                        <div class="form-group">
+                            <label>Counselor Type</label>
+                            <select id="bookingCounselorType" class="form-control" onchange="loadCounselorsByType()">
+                                <option value="">Select Type</option>
+                                <option value="Academic">Academic</option>
+                                <option value="Career">Career</option>
+                                <option value="Personal">Personal</option>
+                                <option value="Mental Health">Mental Health</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Counselor</label>
+                            <select id="bookingCounselor" class="form-control" required>
+                                <option value="">Select a counselor</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="bookingDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Time</label>
+                            <input type="time" id="bookingTime" class="form-control" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Book Appointment</button>
+                            <button type="button" class="btn btn-secondary" onclick="getAIRecommendation()">🤖 Get AI Recommendation</button>
+                        </div>
+                    </form>
+                    <div id="bookingError" class="error-message"></div>
+                    <div id="bookingSuccess" class="success-message"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- My Appointments Section -->
+        <section id="appointmentsSection" class="section" style="display: none;">
+            <div class="container">
+                <h2>My Appointments</h2>
+                <div id="appointmentsList" class="appointments-list"></div>
+            </div>
+        </section>
+
+        <!-- AI Assistant Modal -->
+        <div id="aiModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🤖 AI Assistant</h3>
+                    <button class="modal-close" onclick="closeAIModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="aiChatHistory" class="chat-history"></div>
+                    <div class="chat-input-container">
+                        <input type="text" id="aiPrompt" class="form-control" placeholder="Ask the AI assistant...">
+                        <button class="btn btn-primary" onclick="sendAIQuery()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <p>&copy; 2024 Smart Counselor Appointment Scheduler. Powered by Azure OpenAI.</p>
+            <div class="footer-links">
+                <a href="#" class="footer-link" aria-label="Privacy Policy">Privacy</a>
+                <a href="#" class="footer-link" aria-label="Terms of Service">Terms</a>
+                <a href="#" class="footer-link" aria-label="Contact Support">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Floating AI Assistant Button -->
+    <button 
+        id="floatingAIBtn" 
+        class="floating-ai-button" 
+        onclick="openAIModal()" 
+        aria-label="Open AI Assistant"
+        title="AI Assistant">
+        <i data-lucide="bot" aria-hidden="true"></i>
+    </button>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;" role="status" aria-live="polite">
+        <div class="spinner-large" aria-label="Loading"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal" style="display: none;" role="dialog" aria-labelledby="confirmTitle" aria-modal="true">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Confirm Action</h3>
+                <button class="modal-close" onclick="closeConfirmModal()" aria-label="Close confirmation dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn btn-primary" id="confirmActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        // Initialize Lucide icons after DOM load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>

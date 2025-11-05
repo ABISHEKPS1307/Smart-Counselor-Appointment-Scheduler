@@ -1,0 +1,93 @@
+/**
+ * Express Application Configuration
+ * Main app setup with middleware and routes
+ */
+
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import config from './config.js';
+import logger from './utils/logger.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import correlationId from './middleware/correlationId.js';
+
+// Import routes
+import healthRoutes from './routes/health.routes.js';
+import studentsRoutes from './routes/students.routes.js';
+import counselorsRoutes from './routes/counselors.routes.js';
+import appointmentsRoutes from './routes/appointments.routes.js';
+import aiRoutes from './routes/ai.routes.js';
+
+// Swagger documentation
+import { setupSwagger } from './swagger.js';
+
+const app = express();
+
+// Trust proxy (for Azure App Service)
+app.set('trust proxy', 1);
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"]
+    }
+  }
+}));
+
+// CORS
+app.use(cors(config.cors));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging
+if (config.env === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined', {
+    stream: { write: message => logger.info(message.trim()) }
+  }));
+}
+
+// Correlation ID for distributed tracing
+app.use(correlationId);
+
+// Global rate limiting
+const limiter = rateLimit({
+  windowMs: config.rateLimit.windowMs,
+  max: config.rateLimit.max,
+  message: { success: false, error: { message: 'Too many requests', code: 429 } },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/', limiter);
+
+// Serve static files
+app.use(express.static('public'));
+
+// Setup Swagger documentation
+setupSwagger(app);
+
+// API Routes
+app.use('/api/health', healthRoutes);
+app.use('/api/students', studentsRoutes);
+app.use('/api/counselors', counselorsRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/ai', aiRoutes);
+
+// 404 handler
+app.use(notFoundHandler);
+
+// Global error handler
+app.use(errorHandler);
+
+export default app;
