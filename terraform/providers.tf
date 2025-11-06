@@ -37,6 +37,9 @@ provider "azurerm" {
     }
   }
 
+  # Skip automatic provider registration (use manual registration instead)
+  skip_provider_registration = true
+
   # Authentication via Azure CLI, Service Principal, or Managed Identity
   # For GitHub Actions, use service principal credentials
   # Local dev can use: az login

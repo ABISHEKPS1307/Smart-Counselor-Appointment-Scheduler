@@ -6,23 +6,23 @@
 output "deployment_summary" {
   description = "Summary of deployed resources"
   value = {
-    resource_group         = azurerm_resource_group.main.name
-    location               = azurerm_resource_group.main.location
-    app_service_url        = "https://${azurerm_linux_web_app.main.default_hostname}"
-    app_service_name       = azurerm_linux_web_app.main.name
-    sql_server_fqdn        = azurerm_mssql_server.main.fully_qualified_domain_name
-    sql_database_name      = azurerm_mssql_database.main.name
-    acr_login_server       = azurerm_container_registry.main.login_server
-    acr_name               = azurerm_container_registry.main.name
-    key_vault_name         = azurerm_key_vault.main.name
-    app_insights_name      = azurerm_application_insights.main.name
+    resource_group    = azurerm_resource_group.main.name
+    location          = azurerm_resource_group.main.location
+    app_service_url   = "https://${azurerm_linux_web_app.main.default_hostname}"
+    app_service_name  = azurerm_linux_web_app.main.name
+    sql_server_fqdn   = azurerm_mssql_server.main.fully_qualified_domain_name
+    sql_database_name = azurerm_mssql_database.main.name
+    acr_login_server  = azurerm_container_registry.main.login_server
+    acr_name          = azurerm_container_registry.main.name
+    key_vault_name    = azurerm_key_vault.main.name
+    app_insights_name = azurerm_application_insights.main.name
   }
 }
 
 output "connection_strings" {
   description = "Connection strings for various services"
   value = {
-    sql_connection_string = "Server=tcp:${azurerm_mssql_server.main.fully_qualified_domain_name},1433;Database=${azurerm_mssql_database.main.name};User ID=${var.sql_admin_username};Encrypt=true;TrustServerCertificate=false;Connection Timeout=30;"
+    sql_connection_string          = "Server=tcp:${azurerm_mssql_server.main.fully_qualified_domain_name},1433;Database=${azurerm_mssql_database.main.name};User ID=${var.sql_admin_username};Encrypt=true;TrustServerCertificate=false;Connection Timeout=30;"
     app_insights_connection_string = azurerm_application_insights.main.connection_string
   }
   sensitive = true
@@ -30,6 +30,7 @@ output "connection_strings" {
 
 output "next_steps" {
   description = "Next steps after infrastructure deployment"
+  sensitive   = true
   value = <<-EOT
   
   ╔════════════════════════════════════════════════════════════════════════╗

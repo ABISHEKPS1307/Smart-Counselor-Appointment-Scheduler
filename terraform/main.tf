@@ -76,42 +76,38 @@ resource "azurerm_linux_web_app" "main" {
     application_stack {
       node_version = "18-lts"
     }
-
-    # Enable Application Insights
-    application_insights_connection_string = azurerm_application_insights.main.connection_string
-    application_insights_key               = azurerm_application_insights.main.instrumentation_key
   }
 
   app_settings = {
-    "NODE_ENV"                        = "production"
-    "PORT"                            = "8080"
-    "WEBSITES_PORT"                   = "8080"
-    "WEBSITE_NODE_DEFAULT_VERSION"    = "18-lts"
-    
+    "NODE_ENV"                     = "production"
+    "PORT"                         = "8080"
+    "WEBSITES_PORT"                = "8080"
+    "WEBSITE_NODE_DEFAULT_VERSION" = "18-lts"
+
     # Application Insights
-    "APPINSIGHTS_INSTRUMENTATIONKEY"  = azurerm_application_insights.main.instrumentation_key
-    "APPINSIGHTS_CONNECTION_STRING"   = azurerm_application_insights.main.connection_string
-    
+    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
+    "APPINSIGHTS_CONNECTION_STRING"  = azurerm_application_insights.main.connection_string
+
     # Key Vault reference (requires Managed Identity)
-    "AZURE_KEY_VAULT_NAME"            = azurerm_key_vault.main.name
-    
+    "AZURE_KEY_VAULT_NAME" = azurerm_key_vault.main.name
+
     # Database connection (using Key Vault references)
-    "SQL_SERVER"                      = azurerm_mssql_server.main.fully_qualified_domain_name
-    "SQL_DATABASE"                    = var.sql_database_name
-    "SQL_USER"                        = var.sql_admin_username
-    "SQL_PASSWORD"                    = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.sql_password.id})"
-    "SQL_ENCRYPT"                     = "true"
-    "SQL_TRUST_SERVER_CERTIFICATE"    = "false"
-    
+    "SQL_SERVER"                   = azurerm_mssql_server.main.fully_qualified_domain_name
+    "SQL_DATABASE"                 = var.sql_database_name
+    "SQL_USER"                     = var.sql_admin_username
+    "SQL_PASSWORD"                 = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.sql_password.id})"
+    "SQL_ENCRYPT"                  = "true"
+    "SQL_TRUST_SERVER_CERTIFICATE" = "false"
+
     # JWT Configuration (using Key Vault reference)
-    "JWT_SECRET"                      = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
-    "JWT_EXPIRES_IN"                  = "1h"
-    
+    "JWT_SECRET"     = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
+    "JWT_EXPIRES_IN" = "1h"
+
     # Azure OpenAI (using Key Vault reference)
     # NOTE: You need to manually add AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY to Key Vault
-    "AZURE_OPENAI_DEPLOYMENT_NAME"    = "gpt-4"
-    "AZURE_OPENAI_API_VERSION"        = "2023-05-15"
-    
+    "AZURE_OPENAI_DEPLOYMENT_NAME" = "gpt-4"
+    "AZURE_OPENAI_API_VERSION"     = "2023-05-15"
+
     # Container Registry (for Docker deployments)
     "DOCKER_REGISTRY_SERVER_URL"      = "https://${azurerm_container_registry.main.login_server}"
     "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.main.admin_username
