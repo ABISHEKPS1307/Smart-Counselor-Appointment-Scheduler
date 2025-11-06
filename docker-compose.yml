@@ -62,8 +62,8 @@ services:
       db:
         condition: service_healthy
     volumes:
+      - ./src:/app/src
       - ./public:/app/public
-      - ./server.js:/app/server.js
     networks:
       - app-network
     restart: unless-stopped

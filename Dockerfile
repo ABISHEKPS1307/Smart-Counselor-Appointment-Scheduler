@@ -39,8 +39,9 @@ COPY package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
 # Copy application code
-COPY server.js ./
+COPY src ./src
 COPY public ./public
+COPY sql ./sql
 
 # Change ownership to non-root user
 RUN chown -R nodejs:nodejs /app
@@ -56,4 +57,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:8080/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); });"
 
 # Start the application
-CMD ["node", "server.js"]
+CMD ["node", "src/server.js"]
