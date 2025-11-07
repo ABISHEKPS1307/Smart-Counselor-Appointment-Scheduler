@@ -8,61 +8,41 @@ on:
 env:
   AZURE_WEBAPP_NAME: counselor-scheduler-123
   RESOURCE_GROUP: CloudProjectNew
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        node-version: '22'
     
-    - name: Extract metadata for Docker
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=sha,prefix={{branch}}-
-          latest
+    - name: Install dependencies
+      run: npm ci --production
     
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+        cp -r src public sql node_modules package.json deploy/
+        cd deploy && zip -r ../deploy.zip .
     
     - name: Login to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    - name: Configure App Service for Container
+    - name: Configure App Service for Node.js
       run: |
         az webapp config set \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --linux-fx-version "DOCKER|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          --linux-fx-version "NODE|22-lts" \
+          --startup-file "node src/server.js"
     
     - name: Set App Service environment variables
       run: |
@@ -70,16 +50,25 @@ jobs:
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --settings \
-            DOCKER_REGISTRY_SERVER_URL=https://${{ env.REGISTRY }} \
-            DOCKER_REGISTRY_SERVER_USERNAME=${{ github.actor }} \
-            DOCKER_REGISTRY_SERVER_PASSWORD=${{ secrets.GITHUB_TOKEN }} \
             NODE_ENV=production \
+            PORT=8080 \
             SQL_SERVER=scmainserver.database.windows.net \
             SQL_DATABASE=sc-db \
             SQL_USER=adminuser \
             SQL_PASSWORD="${{ secrets.SQL_PASSWORD }}" \
             SQL_ENCRYPT=true \
-            SQL_TRUST_SERVER_CERTIFICATE=false
+            SQL_TRUST_SERVER_CERTIFICATE=false \
+            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            JWT_EXPIRES_IN=1h \
+            AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
+            AZURE_OPENAI_API_KEY=placeholder
+    
+    - name: Deploy to Azure Web App
+      run: |
+        az webapp deployment source config-zip \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --src deploy.zip
     
     - name: Restart Web App
       run: |
@@ -89,6 +78,5 @@ jobs:
     
     - name: Deployment Complete
       run: |
-        echo "✅ Docker deployment successful!"
-        echo "🐳 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        echo "✅ Deployment successful!"
         echo "🌐 App URL: https://${{ env.AZURE_WEBAPP_NAME }}-bjayctaaejfccyas.centralindia-01.azurewebsites.net"
