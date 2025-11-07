@@ -95,3 +95,11 @@ $RECYCLE.BIN/
 .directory
 .Trash-*
 .nfs*
+
+# Deployment artifacts
+deploy.zip
+terraform-outputs.json
+*.ps1
+DEPLOY_*.md
+terraform/DEPLOYMENT_*.md
+terraform/tfplan

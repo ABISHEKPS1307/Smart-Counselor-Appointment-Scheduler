@@ -1,10 +1,10 @@
 # =============================================================================
 # Smart Counselor Appointment Scheduler - Production Dockerfile
-# Base Image: Node.js 18 Alpine for minimal size
+# Base Image: Node.js 22 Alpine for minimal size
 # =============================================================================
 
 # Stage 1: Build dependencies
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -20,7 +20,7 @@ RUN npm ci --only=production && \
 # Stage 2: Production image
 # =============================================================================
 
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Set NODE_ENV to production
 ENV NODE_ENV=production
