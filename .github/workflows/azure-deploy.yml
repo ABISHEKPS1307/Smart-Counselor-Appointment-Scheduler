@@ -17,10 +17,6 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '22'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci --production
     
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
@@ -28,3 +24,6 @@ jobs:
         app-name: 'counselor-scheduler-123'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: .
+        
+    - name: Deployment Complete
+      run: echo "✅ Deployed to https://counselor-scheduler-123-bjayctaaejfccyas.centralindia-01.azurewebsites.net"
