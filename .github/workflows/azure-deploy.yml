@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  AZURE_WEBAPP_NAME: counselor-scheduler-123
+  RESOURCE_GROUP: CloudProjectNew
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -24,15 +28,29 @@ jobs:
     - name: Create deployment package
       run: |
         mkdir -p deployment
-        cp -r src public sql package.json package-lock.json deployment/
-        cd deployment && zip -r ../app.zip .
+        cp -r src public sql package.json package-lock.json node_modules deployment/
+        cd deployment
+        zip -r ../deploy.zip .
     
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v3
+    - name: Login to Azure
+      uses: azure/login@v1
       with:
-        app-name: 'counselor-scheduler-123'
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: app.zip
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deploy to Azure Web App using ZIP
+      run: |
+        az webapp deployment source config-zip \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --src deploy.zip
+    
+    - name: Restart Web App
+      run: |
+        az webapp restart \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
         
     - name: Deployment Complete
-      run: echo "✅ Deployed to https://counselor-scheduler-123-bjayctaaejfccyas.centralindia-01.azurewebsites.net"
+      run: |
+        echo "✅ Deployment successful!"
+        echo "🌐 App URL: https://${{ env.AZURE_WEBAPP_NAME }}-bjayctaaejfccyas.centralindia-01.azurewebsites.net"
