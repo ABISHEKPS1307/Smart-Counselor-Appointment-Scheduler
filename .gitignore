@@ -100,6 +100,16 @@ $RECYCLE.BIN/
 deploy.zip
 terraform-outputs.json
 *.ps1
+*.sh
 DEPLOY_*.md
-terraform/DEPLOYMENT_*.md
-terraform/tfplan
+SETUP_*.md
+SETUP_*.txt
+QUICK_START.txt
+DOCKER_SETUP.md
+DEPLOYMENT_GUIDE.md
+azure-publish-profile.xml
+docker-compose.*.yml
+app.zip
+
+# Terraform (not used anymore)
+terraform/
