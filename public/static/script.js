@@ -428,11 +428,17 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     const date = document.getElementById('bookingDate').value;
     const time = document.getElementById('bookingTime').value;
 
+    const studentID = currentUser.StudentID || currentUser.studentID;
+    if (!studentID) {
+        showError('Student ID not found. Please logout and login again.', 'bookingError');
+        return;
+    }
+
     try {
         const response = await authenticatedFetch(`${API_BASE}/appointments`, {
             method: 'POST',
             body: JSON.stringify({
-                studentID: currentUser.StudentID,
+                studentID: studentID,
                 counselorID,
                 date,
                 time
@@ -478,25 +484,40 @@ async function loadMyAppointments() {
 
     try {
         let endpoint;
+        let userId;
+        
         if (currentUser.role === 'student') {
-            endpoint = `${API_BASE}/appointments/student/${currentUser.StudentID}`;
+            userId = currentUser.StudentID || currentUser.studentID;
+            if (!userId) {
+                console.error('Student ID not found in user object:', currentUser);
+                throw new Error('Student ID not found. Please logout and login again.');
+            }
+            endpoint = `${API_BASE}/appointments/student/${userId}`;
         } else if (currentUser.role === 'counselor') {
-            endpoint = `${API_BASE}/appointments/counselor/${currentUser.CounselorID}`;
+            userId = currentUser.CounselorID || currentUser.counselorID;
+            if (!userId) {
+                console.error('Counselor ID not found in user object:', currentUser);
+                throw new Error('Counselor ID not found. Please logout and login again.');
+            }
+            endpoint = `${API_BASE}/appointments/counselor/${userId}`;
         } else {
             throw new Error('Invalid user role');
         }
+
+        console.log('Fetching appointments from:', endpoint);
 
         const response = await authenticatedFetch(endpoint);
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error('Failed to load appointments');
+            console.error('Appointments API error:', data);
+            throw new Error(data.error?.message || 'Failed to load appointments');
         }
 
         displayAppointments(data.data.appointments);
     } catch (error) {
         console.error('Load appointments error:', error);
-        container.innerHTML = '<p>Failed to load appointments.</p>';
+        container.innerHTML = `<p style="color: red;">${error.message || 'Failed to load appointments.'}</p>`;
     }
 }
 
