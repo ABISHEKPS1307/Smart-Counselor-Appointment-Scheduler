@@ -189,6 +189,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         // Store token and user info
         authToken = data.data.token;
         currentUser = data.data.user;
+        currentUser.role = userType; // Add role to user object
         localStorage.setItem('authToken', authToken);
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
