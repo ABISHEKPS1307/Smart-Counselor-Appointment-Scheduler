@@ -64,7 +64,7 @@ const config = {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000, // 15 minutes
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
     ai: {
-      windowMs: parseInt(process.env.AI_RATE_LIMIT_WINDOW_MINUTES) * 60000 || 900000,
+      windowMs: (parseInt(process.env.AI_RATE_LIMIT_WINDOW_MINUTES) || 15) * 60000,
       max: parseInt(process.env.AI_RATE_LIMIT_MAX_REQUESTS) || 20
     }
   },

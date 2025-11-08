@@ -22,13 +22,28 @@ const API_BASE = window.location.origin + '/api';
  * Check if user is authenticated on page load
  */
 function initAuth() {
-    const token = localStorage.getItem('authToken');
-    const user = localStorage.getItem('currentUser');
+    try {
+        const token = localStorage.getItem('authToken');
+        const user = localStorage.getItem('currentUser');
 
-    if (token && user) {
-        authToken = token;
-        currentUser = JSON.parse(user);
-        updateUIForAuthenticatedUser();
+        if (token && user) {
+            authToken = token;
+            currentUser = JSON.parse(user);
+            
+            // Validate user object has required properties
+            if (!currentUser || !currentUser.Email) {
+                console.error('Invalid user data in localStorage');
+                logout();
+                return;
+            }
+            
+            updateUIForAuthenticatedUser();
+        }
+    } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        // Clear corrupted data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
     }
 }
 
@@ -330,33 +345,55 @@ async function loadCounselors() {
             throw new Error('Failed to load counselors');
         }
 
+        // Validate response structure
+        if (!data || !data.data || !Array.isArray(data.data.counselors)) {
+            console.error('Invalid counselors response format:', data);
+            throw new Error('Invalid response format');
+        }
+
         allCounselors = data.data.counselors;
         displayCounselors(allCounselors);
     } catch (error) {
         console.error('Load counselors error:', error);
-        document.getElementById('counselorsList').innerHTML = '<p>Failed to load counselors.</p>';
+        const container = document.getElementById('counselorsList');
+        if (container) {
+            container.innerHTML = '<p style="color: red;">Failed to load counselors. Please refresh the page.</p>';
+        }
     }
 }
 
 function displayCounselors(counselors) {
     const container = document.getElementById('counselorsList');
 
+    if (!counselors || !Array.isArray(counselors)) {
+        container.innerHTML = '<p style="color: red;">Error displaying counselors.</p>';
+        return;
+    }
+
     if (counselors.length === 0) {
         container.innerHTML = '<p>No counselors found.</p>';
         return;
     }
 
-    container.innerHTML = counselors.map(counselor => `
-        <div class="counselor-card">
-            <div class="counselor-photo">${counselor.Name.charAt(0).toUpperCase()}</div>
-            <h3>${counselor.Name}</h3>
-            <span class="counselor-type">${counselor.CounselorType}</span>
-            <p class="counselor-bio">${counselor.Bio || 'No bio available'}</p>
-            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
-                ${counselor.Email}
-            </p>
-        </div>
-    `).join('');
+    container.innerHTML = counselors.map(counselor => {
+        // Safety check for counselor properties
+        if (!counselor || !counselor.Name || !counselor.Email) {
+            console.error('Invalid counselor data:', counselor);
+            return '';
+        }
+        
+        return `
+            <div class="counselor-card">
+                <div class="counselor-photo">${counselor.Name.charAt(0).toUpperCase()}</div>
+                <h3>${counselor.Name}</h3>
+                <span class="counselor-type">${counselor.CounselorType || 'General'}</span>
+                <p class="counselor-bio">${counselor.Bio || 'No bio available'}</p>
+                <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                    ${counselor.Email}
+                </p>
+            </div>
+        `;
+    }).filter(html => html).join('');
 }
 
 function filterCounselors() {
@@ -427,6 +464,22 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     const counselorID = parseInt(document.getElementById('bookingCounselor').value);
     const date = document.getElementById('bookingDate').value;
     const time = document.getElementById('bookingTime').value;
+
+    // Validate inputs
+    if (!counselorID || isNaN(counselorID) || counselorID <= 0) {
+        showError('Please select a counselor.', 'bookingError');
+        return;
+    }
+
+    if (!date) {
+        showError('Please select a date.', 'bookingError');
+        return;
+    }
+
+    if (!time) {
+        showError('Please select a time.', 'bookingError');
+        return;
+    }
 
     const studentID = currentUser.StudentID || currentUser.studentID;
     if (!studentID) {
@@ -524,32 +577,49 @@ async function loadMyAppointments() {
 function displayAppointments(appointments) {
     const container = document.getElementById('appointmentsList');
 
+    if (!appointments || !Array.isArray(appointments)) {
+        container.innerHTML = '<p style="color: red;">Error displaying appointments.</p>';
+        return;
+    }
+
     if (appointments.length === 0) {
         container.innerHTML = '<p>No appointments found.</p>';
         return;
     }
 
     container.innerHTML = appointments.map(appt => {
-        const statusClass = `status-${appt.Status.toLowerCase()}`;
-        const name = currentUser.role === 'student' ? appt.CounselorName : appt.StudentName;
-        const role = currentUser.role === 'student' ? appt.CounselorType : 'Student';
+        // Safety checks for appointment properties
+        if (!appt || !appt.Status || !appt.Date || !appt.Time) {
+            console.error('Invalid appointment data:', appt);
+            return '';
+        }
 
-        return `
-            <div class="appointment-card">
-                <div class="appointment-info">
-                    <h4>${name}</h4>
-                    <div class="appointment-details">
-                        <span>📅 ${new Date(appt.Date).toLocaleDateString()}</span>
-                        <span>🕐 ${appt.Time}</span>
-                        <span>👤 ${role}</span>
+        const statusClass = `status-${appt.Status.toLowerCase()}`;
+        const name = currentUser.role === 'student' ? (appt.CounselorName || 'Unknown') : (appt.StudentName || 'Unknown');
+        const role = currentUser.role === 'student' ? (appt.CounselorType || 'Counselor') : 'Student';
+
+        try {
+            const dateStr = new Date(appt.Date).toLocaleDateString();
+            return `
+                <div class="appointment-card">
+                    <div class="appointment-info">
+                        <h4>${name}</h4>
+                        <div class="appointment-details">
+                            <span>📅 ${dateStr}</span>
+                            <span>🕐 ${appt.Time}</span>
+                            <span>👤 ${role}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="appointment-status ${statusClass}">${appt.Status}</span>
                     </div>
                 </div>
-                <div>
-                    <span class="appointment-status ${statusClass}">${appt.Status}</span>
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        } catch (error) {
+            console.error('Error rendering appointment:', error, appt);
+            return '';
+        }
+    }).filter(html => html).join('');
 }
 
 // =============================================================================

@@ -58,8 +58,15 @@ export async function initializeDatabase() {
  */
 export async function getPool() {
   if (!pool || !isConnected) {
+    logger.warn('Database connection lost, reinitializing...');
     await initializeDatabase();
   }
+  
+  // Verify pool is actually connected
+  if (!pool || !pool.connected) {
+    throw new Error('Database connection is not available');
+  }
+  
   return pool;
 }
 

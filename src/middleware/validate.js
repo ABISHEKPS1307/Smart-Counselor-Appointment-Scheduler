@@ -195,10 +195,16 @@ export function validateAppointment(req, res, next) {
     }
   }
   
-  // Validate time (HH:MM:SS format)
-  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
+  // Validate time (HH:MM or HH:MM:SS format)
+  // HTML5 time input returns HH:MM, but we also accept HH:MM:SS
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/;
   if (!time || !timeRegex.test(time)) {
-    errors.push({ field: 'time', message: 'Valid time is required (HH:MM:SS)' });
+    errors.push({ field: 'time', message: 'Valid time is required (HH:MM or HH:MM:SS)' });
+  } else {
+    // Normalize time to HH:MM:SS format for database consistency
+    if (time.length === 5) {
+      req.body.time = time + ':00';
+    }
   }
   
   if (errors.length > 0) {
