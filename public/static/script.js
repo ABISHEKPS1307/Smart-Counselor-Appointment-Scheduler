@@ -153,12 +153,22 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
     console.log('Login request:', { endpoint, email, passwordLength: password.length });
 
+    // Show loading message
+    showError('Logging in... Please wait.', 'loginError');
+
     try {
+        // Add timeout to fetch request (60 seconds for slow connections)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
         const response = await fetch(`${API_BASE}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         // Check if response has content before parsing
         const contentType = response.headers.get('content-type');
@@ -199,7 +209,13 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         hideError('loginError');
     } catch (error) {
         console.error('Login error:', { message: error.message, error });
-        showError(error.message || 'Network error. Please try again.', 'loginError');
+        
+        // Handle timeout specifically
+        if (error.name === 'AbortError') {
+            showError('Login is taking too long. Please check your internet connection and try again.', 'loginError');
+        } else {
+            showError(error.message || 'Network error. Please try again.', 'loginError');
+        }
     }
 });
 
@@ -222,12 +238,22 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
 
     console.log('Registration request:', { endpoint, body });
 
+    // Show loading message
+    showError('Registering... Please wait.', 'registerError');
+
     try {
+        // Add timeout to fetch request (60 seconds for slow connections)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
         const response = await fetch(`${API_BASE}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         // Check if response has content before parsing
         const contentType = response.headers.get('content-type');
@@ -274,7 +300,13 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         }, 2000);
     } catch (error) {
         console.error('Registration error:', { message: error.message, error });
-        showError(error.message || 'Network error. Please try again.', 'registerError');
+        
+        // Handle timeout specifically
+        if (error.name === 'AbortError') {
+            showError('Registration is taking too long. Please check your internet connection and try again.', 'registerError');
+        } else {
+            showError(error.message || 'Network error. Please try again.', 'registerError');
+        }
         hideSuccess('registerSuccess');
     }
 });
