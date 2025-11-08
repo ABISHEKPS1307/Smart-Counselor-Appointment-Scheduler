@@ -354,9 +354,22 @@ async function loadCounselorsByType() {
 
     try {
         const response = await fetch(`${API_BASE}/counselors`);
-        const counselors = await response.json();
+        const data = await response.json();
 
-        const filtered = counselors.filter(c => c.CounselorType === type);
+        if (!response.ok) {
+            throw new Error('Failed to load counselors');
+        }
+
+        const allCounselors = data.data.counselors;
+        const filtered = allCounselors.filter(c => c.CounselorType === type);
+
+        if (filtered.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = `No ${type} counselors available`;
+            counselorSelect.appendChild(option);
+            return;
+        }
 
         filtered.forEach(counselor => {
             const option = document.createElement('option');
@@ -366,6 +379,7 @@ async function loadCounselorsByType() {
         });
     } catch (error) {
         console.error('Load counselors error:', error);
+        showError('Failed to load counselors', 'bookingError');
     }
 }
 
