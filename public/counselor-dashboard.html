@@ -179,27 +179,76 @@
         // Load appointments
         async function loadAppointments() {
             const container = document.getElementById('appointmentsList');
+            
+            if (!container) {
+                console.error('Appointments list container not found');
+                return;
+            }
+            
             container.innerHTML = '<div style="text-align: center; padding: 2rem;"><p>Loading appointments...</p></div>';
 
             try {
                 const counselorID = currentUser.CounselorID || currentUser.counselorID;
+                
+                if (!counselorID) {
+                    throw new Error('Counselor ID not found. Please logout and login again.');
+                }
+                
+                if (!authToken) {
+                    throw new Error('You are not logged in. Please login again.');
+                }
+                
+                // Add timeout (15 seconds)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
                 const response = await fetch(`${API_BASE}/appointments/counselor/${counselorID}`, {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
-                    }
+                    },
+                    signal: controller.signal
                 });
-
+                
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (!response.ok) {
+                    // Handle specific status codes
+                    if (response.status === 401) {
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('currentUser');
+                        throw new Error('Your session has expired. Redirecting to login...');
+                    }
                     throw new Error(data.error?.message || 'Failed to load appointments');
+                }
+                
+                // Validate response structure
+                if (!data || !data.data || !Array.isArray(data.data.appointments)) {
+                    throw new Error('Invalid response format');
                 }
 
                 allAppointments = data.data.appointments || [];
                 displayAppointments();
             } catch (error) {
                 console.error('Load appointments error:', error);
-                container.innerHTML = `<p style="color: red;">${error.message}</p>`;
+                
+                let errorMsg = 'Failed to load appointments.';
+                if (error.name === 'AbortError') {
+                    errorMsg = 'Loading timeout. Please check your internet connection.';
+                } else if (error.message === 'Failed to fetch') {
+                    errorMsg = 'Network error. Please check your internet connection.';
+                } else if (error.message) {
+                    errorMsg = error.message;
+                }
+                
+                container.innerHTML = `<p style="color: red;">${errorMsg} <button onclick="loadAppointments()" class="btn btn-sm">Retry</button></p>`;
+                
+                // Redirect to login if session expired
+                if (error.message.includes('session expired')) {
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                }
             }
         }
 
@@ -260,23 +309,54 @@
 
         // Update appointment status
         async function updateStatus(appointmentId, status) {
+            // Validate inputs
+            if (!appointmentId || typeof appointmentId !== 'number') {
+                alert('Invalid appointment ID');
+                return;
+            }
+            
+            if (!status || !['Accepted', 'Rejected', 'Cancelled'].includes(status)) {
+                alert('Invalid status');
+                return;
+            }
+            
             if (!confirm(`Are you sure you want to ${status.toLowerCase()} this appointment?`)) {
+                return;
+            }
+            
+            if (!authToken) {
+                alert('You are not logged in. Please login again.');
+                window.location.href = '/login.html';
                 return;
             }
 
             try {
+                // Add timeout (15 seconds)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
                 const response = await fetch(`${API_BASE}/appointments/${appointmentId}`, {
                     method: 'PATCH',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ status })
+                    body: JSON.stringify({ status }),
+                    signal: controller.signal
                 });
-
+                
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (!response.ok) {
+                    // Handle specific status codes
+                    if (response.status === 401) {
+                        alert('Your session has expired. Please login again.');
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('currentUser');
+                        window.location.href = '/login.html';
+                        return;
+                    }
                     throw new Error(data.error?.message || 'Failed to update appointment');
                 }
 
@@ -284,13 +364,25 @@
                 const index = allAppointments.findIndex(a => a.AppointmentID === appointmentId);
                 if (index !== -1) {
                     allAppointments[index].Status = status;
+                } else {
+                    // Reload if not found locally
+                    await loadAppointments();
+                    return;
                 }
 
                 displayAppointments();
                 alert(`Appointment ${status.toLowerCase()} successfully!`);
             } catch (error) {
                 console.error('Update status error:', error);
-                alert(error.message || 'Failed to update appointment');
+                
+                // Handle specific error types
+                if (error.name === 'AbortError') {
+                    alert('Request timeout. Please check your internet connection and try again.');
+                } else if (error.message === 'Failed to fetch') {
+                    alert('Network error. Please check your internet connection.');
+                } else {
+                    alert(error.message || 'Failed to update appointment');
+                }
             }
         }
 

@@ -127,22 +127,61 @@
             const successId = `${userType}RegisterSuccess`;
             const errorEl = document.getElementById(errorId);
             const successEl = document.getElementById(successId);
+            const formId = userType + 'RegisterForm';
+            const submitBtn = document.querySelector(`#${formId} button[type="submit"]`);
             
             errorEl.style.display = 'none';
             successEl.style.display = 'none';
+            
+            // Validate data
+            if (!data.email || !data.email.trim()) {
+                errorEl.textContent = 'Email is required';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            if (!data.password || data.password.length < 8) {
+                errorEl.textContent = 'Password must be at least 8 characters';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            if (!data.name || data.name.trim().length < 2) {
+                errorEl.textContent = 'Name must be at least 2 characters';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            // Disable button
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Registering...';
+            }
 
             try {
                 const endpoint = userType === 'student' ? '/students/register' : '/counselors/register';
+                
+                // Add timeout (30 seconds)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                
                 const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(data),
+                    signal: controller.signal
                 });
-
+                
+                clearTimeout(timeoutId);
                 const result = await response.json();
 
                 if (!response.ok) {
                     throw new Error(result.error?.message || 'Registration failed');
+                }
+                
+                // Validate response
+                if (!result || !result.data || !result.data.token || !result.data.user) {
+                    throw new Error('Invalid response from server');
                 }
 
                 // Show success message
@@ -153,12 +192,18 @@
                 localStorage.setItem('authToken', result.data.token);
                 const user = { ...result.data.user, role: userType };
                 
-                // Ensure ID property exists
-                if (userType === 'student' && !user.studentID) {
-                    user.studentID = user.StudentID;
+                // Ensure ID property exists with validation
+                if (userType === 'student') {
+                    if (!user.StudentID && !user.studentID) {
+                        throw new Error('Invalid user data received');
+                    }
+                    user.studentID = user.StudentID || user.studentID;
                 }
-                if (userType === 'counselor' && !user.counselorID) {
-                    user.counselorID = user.CounselorID;
+                if (userType === 'counselor') {
+                    if (!user.CounselorID && !user.counselorID) {
+                        throw new Error('Invalid user data received');
+                    }
+                    user.counselorID = user.CounselorID || user.counselorID;
                 }
                 
                 localStorage.setItem('currentUser', JSON.stringify(user));
@@ -173,8 +218,23 @@
                 }, 1500);
             } catch (error) {
                 console.error('Registration error:', error);
-                errorEl.textContent = error.message || 'Registration failed. Please try again.';
+                
+                // Handle specific error types
+                if (error.name === 'AbortError') {
+                    errorEl.textContent = 'Registration timeout. Please check your internet connection and try again.';
+                } else if (error.message === 'Failed to fetch') {
+                    errorEl.textContent = 'Network error. Please check your internet connection.';
+                } else {
+                    errorEl.textContent = error.message || 'Registration failed. Please try again.';
+                }
+                
                 errorEl.style.display = 'block';
+                
+                // Re-enable button
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Register';
+                }
             }
         }
 

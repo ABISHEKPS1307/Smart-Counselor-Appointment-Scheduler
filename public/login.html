@@ -90,34 +90,76 @@
 
         async function login(userType, email, password, errorId) {
             const errorEl = document.getElementById(errorId);
+            const formId = userType + 'LoginForm';
+            const submitBtn = document.querySelector(`#${formId} button[type="submit"]`);
+            
+            // Validate inputs
+            if (!email || !email.trim()) {
+                errorEl.style.display = 'block';
+                errorEl.style.color = '#dc2626';
+                errorEl.textContent = 'Please enter your email';
+                return;
+            }
+            
+            if (!password || password.length < 6) {
+                errorEl.style.display = 'block';
+                errorEl.style.color = '#dc2626';
+                errorEl.textContent = 'Please enter a valid password';
+                return;
+            }
+            
+            // Disable button and show loading
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Logging in...';
+            }
+            
             errorEl.style.display = 'block';
             errorEl.textContent = 'Logging in...';
             errorEl.style.color = '#666';
 
             try {
                 const endpoint = userType === 'student' ? '/students/login' : '/counselors/login';
+                
+                // Add timeout (30 seconds)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                
                 const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password }),
+                    signal: controller.signal
                 });
-
+                
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(data.error?.message || 'Login failed');
+                }
+                
+                // Validate response data
+                if (!data || !data.data || !data.data.token || !data.data.user) {
+                    throw new Error('Invalid response from server');
                 }
 
                 // Store authentication data
                 localStorage.setItem('authToken', data.data.token);
                 const user = { ...data.data.user, role: userType };
                 
-                // Ensure ID property exists
-                if (userType === 'student' && !user.studentID) {
-                    user.studentID = user.StudentID;
+                // Ensure ID property exists with validation
+                if (userType === 'student') {
+                    if (!user.StudentID && !user.studentID) {
+                        throw new Error('Invalid user data received');
+                    }
+                    user.studentID = user.StudentID || user.studentID;
                 }
-                if (userType === 'counselor' && !user.counselorID) {
-                    user.counselorID = user.CounselorID;
+                if (userType === 'counselor') {
+                    if (!user.CounselorID && !user.counselorID) {
+                        throw new Error('Invalid user data received');
+                    }
+                    user.counselorID = user.CounselorID || user.counselorID;
                 }
                 
                 localStorage.setItem('currentUser', JSON.stringify(user));
@@ -131,7 +173,21 @@
             } catch (error) {
                 console.error('Login error:', error);
                 errorEl.style.color = '#dc2626';
-                errorEl.textContent = error.message || 'Login failed. Please try again.';
+                
+                // Handle specific error types
+                if (error.name === 'AbortError') {
+                    errorEl.textContent = 'Login timeout. Please check your internet connection and try again.';
+                } else if (error.message === 'Failed to fetch') {
+                    errorEl.textContent = 'Network error. Please check your internet connection.';
+                } else {
+                    errorEl.textContent = error.message || 'Login failed. Please try again.';
+                }
+                
+                // Re-enable button
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Login';
+                }
             }
         }
 
