@@ -65,10 +65,22 @@ jobs:
     
     - name: Deploy to Azure Web App
       run: |
-        az webapp deployment source config-zip \
+        # Stop app to prevent deployment conflicts
+        az webapp stop \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
+        
+        # Wait for app to stop
+        sleep 10
+        
+        # Deploy using the new command (not deprecated)
+        az webapp deploy \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --src deploy.zip
+          --src-path deploy.zip \
+          --type zip \
+          --async false \
+          --clean true
     
     - name: Restart Web App
       run: |
