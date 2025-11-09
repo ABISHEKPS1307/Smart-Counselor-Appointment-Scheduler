@@ -27,9 +27,7 @@ jobs:
     
     - name: Create deployment package
       run: |
-        mkdir -p deploy
-        cp -r src public sql node_modules package.json deploy/
-        cd deploy && zip -r ../deploy.zip .
+        zip -r deploy.zip src public sql node_modules package.json package-lock.json .gitignore
     
     - name: Login to Azure
       uses: azure/login@v1
@@ -61,7 +59,10 @@ jobs:
             JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             JWT_EXPIRES_IN=1h \
             AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
-            AZURE_OPENAI_API_KEY=placeholder
+            AZURE_OPENAI_API_KEY=placeholder \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+            ENABLE_ORYX_BUILD=false \
+            WEBSITE_RUN_FROM_PACKAGE=1
     
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
