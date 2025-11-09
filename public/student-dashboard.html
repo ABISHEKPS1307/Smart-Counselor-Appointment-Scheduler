@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Smart Counselor Scheduler</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <span>🎓</span>
+                Smart Counselor Scheduler
+            </h1>
+            <nav class="nav">
+                <span id="userName"></span>
+                <button class="btn btn-sm" id="logoutBtn">
+                    <i data-lucide="log-out" class="icon"></i>
+                    Logout
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-top: 2rem;">
+        <!-- Navigation Tabs -->
+        <div class="dashboard-tabs">
+            <button class="tab-btn active" data-section="browse">Browse Counselors</button>
+            <button class="tab-btn" data-section="book">Book Appointment</button>
+            <button class="tab-btn" data-section="appointments">My Appointments</button>
+        </div>
+
+        <!-- Browse Counselors Section -->
+        <section id="browseSection" class="dashboard-section active">
+            <h2>Browse Counselors</h2>
+            <div class="form-group">
+                <label for="counselorTypeFilter">Filter by Type</label>
+                <select id="counselorTypeFilter" class="form-control">
+                    <option value="">All Types</option>
+                    <option value="Academic">Academic</option>
+                    <option value="Career">Career</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Mental Health">Mental Health</option>
+                </select>
+            </div>
+            <div id="counselorsList" class="counselors-grid"></div>
+        </section>
+
+        <!-- Book Appointment Section -->
+        <section id="bookSection" class="dashboard-section">
+            <h2>Book an Appointment</h2>
+            <form id="bookingForm">
+                <div class="form-group">
+                    <label for="bookingType">Counselor Type</label>
+                    <select id="bookingType" class="form-control" required>
+                        <option value="">Select Type</option>
+                        <option value="Academic">Academic</option>
+                        <option value="Career">Career</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Mental Health">Mental Health</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bookingCounselor">Counselor</label>
+                    <select id="bookingCounselor" class="form-control" required>
+                        <option value="">Select Counselor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bookingDate">Date</label>
+                    <input type="date" id="bookingDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookingTime">Time</label>
+                    <input type="time" id="bookingTime" class="form-control" required>
+                </div>
+                <div id="bookingError" class="error-message" style="display: none;"></div>
+                <div id="bookingSuccess" class="success-message" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary">Book Appointment</button>
+            </form>
+        </section>
+
+        <!-- My Appointments Section -->
+        <section id="appointmentsSection" class="dashboard-section">
+            <h2>My Appointments</h2>
+            <div id="appointmentsList"></div>
+        </section>
+    </main>
+
+    <script src="/static/student-dashboard.js"></script>
+</body>
+</html>

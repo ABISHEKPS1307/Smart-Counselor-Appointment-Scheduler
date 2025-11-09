@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Smart Counselor Scheduler</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="logo">
+                <span>🎓</span>
+                Smart Counselor Scheduler
+            </h1>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="student">Student Register</button>
+                <button class="auth-tab" data-tab="counselor">Counselor Register</button>
+            </div>
+
+            <!-- Student Registration -->
+            <div id="studentRegister" class="auth-form active">
+                <h2>Student Registration</h2>
+                <form id="studentRegisterForm">
+                    <div class="form-group">
+                        <label for="studentName">Full Name</label>
+                        <input type="text" id="studentName" class="form-control" required minlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="studentEmail">Email</label>
+                        <input type="email" id="studentEmail" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="studentPassword">Password</label>
+                        <input type="password" id="studentPassword" class="form-control" required minlength="8">
+                        <small>Minimum 8 characters</small>
+                    </div>
+                    <div id="studentRegisterError" class="error-message" style="display: none;"></div>
+                    <div id="studentRegisterSuccess" class="success-message" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">Register</button>
+                    <p class="auth-link">Already have an account? <a href="login.html">Login here</a></p>
+                </form>
+            </div>
+
+            <!-- Counselor Registration -->
+            <div id="counselorRegister" class="auth-form">
+                <h2>Counselor Registration</h2>
+                <form id="counselorRegisterForm">
+                    <div class="form-group">
+                        <label for="counselorName">Full Name</label>
+                        <input type="text" id="counselorName" class="form-control" required minlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="counselorEmail">Email</label>
+                        <input type="email" id="counselorEmail" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="counselorPassword">Password</label>
+                        <input type="password" id="counselorPassword" class="form-control" required minlength="8">
+                        <small>Minimum 8 characters</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="counselorType">Specialization</label>
+                        <select id="counselorType" class="form-control" required>
+                            <option value="">Select Type</option>
+                            <option value="Academic">Academic</option>
+                            <option value="Career">Career</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Mental Health">Mental Health</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="counselorBio">Bio (Optional)</label>
+                        <textarea id="counselorBio" class="form-control" rows="3" placeholder="Tell students about your experience..."></textarea>
+                    </div>
+                    <div id="counselorRegisterError" class="error-message" style="display: none;"></div>
+                    <div id="counselorRegisterSuccess" class="success-message" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">Register</button>
+                    <p class="auth-link">Already have an account? <a href="login.html">Login here</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        // Tab switching
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tabName}Register`).classList.add('active');
+            });
+        });
+
+        // Student Registration
+        document.getElementById('studentRegisterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('studentName').value;
+            const email = document.getElementById('studentEmail').value;
+            const password = document.getElementById('studentPassword').value;
+            
+            await register('student', { name, email, password });
+        });
+
+        // Counselor Registration
+        document.getElementById('counselorRegisterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('counselorName').value;
+            const email = document.getElementById('counselorEmail').value;
+            const password = document.getElementById('counselorPassword').value;
+            const counselorType = document.getElementById('counselorType').value;
+            const bio = document.getElementById('counselorBio').value;
+            
+            await register('counselor', { name, email, password, counselorType, bio });
+        });
+
+        async function register(userType, data) {
+            const errorId = `${userType}RegisterError`;
+            const successId = `${userType}RegisterSuccess`;
+            const errorEl = document.getElementById(errorId);
+            const successEl = document.getElementById(successId);
+            
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            try {
+                const endpoint = userType === 'student' ? '/students/register' : '/counselors/register';
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error?.message || 'Registration failed');
+                }
+
+                // Show success message
+                successEl.textContent = 'Registration successful! Redirecting to dashboard...';
+                successEl.style.display = 'block';
+
+                // Store authentication data
+                localStorage.setItem('authToken', result.data.token);
+                const user = { ...result.data.user, role: userType };
+                
+                // Ensure ID property exists
+                if (userType === 'student' && !user.studentID) {
+                    user.studentID = user.StudentID;
+                }
+                if (userType === 'counselor' && !user.counselorID) {
+                    user.counselorID = user.CounselorID;
+                }
+                
+                localStorage.setItem('currentUser', JSON.stringify(user));
+
+                // Redirect after 1.5 seconds
+                setTimeout(() => {
+                    if (userType === 'student') {
+                        window.location.href = '/student-dashboard.html';
+                    } else {
+                        window.location.href = '/counselor-dashboard.html';
+                    }
+                }, 1500);
+            } catch (error) {
+                console.error('Registration error:', error);
+                errorEl.textContent = error.message || 'Registration failed. Please try again.';
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // Check if already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('currentUser');
+            
+            if (token && user) {
+                try {
+                    const userData = JSON.parse(user);
+                    if (userData.role === 'student') {
+                        window.location.href = '/student-dashboard.html';
+                    } else if (userData.role === 'counselor') {
+                        window.location.href = '/counselor-dashboard.html';
+                    }
+                } catch (error) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                }
+            }
+
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

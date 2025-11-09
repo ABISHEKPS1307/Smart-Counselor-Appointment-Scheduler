@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Smart Counselor Scheduler</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="logo">
+                <span>🎓</span>
+                Smart Counselor Scheduler
+            </h1>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="student">Student Login</button>
+                <button class="auth-tab" data-tab="counselor">Counselor Login</button>
+            </div>
+
+            <!-- Student Login -->
+            <div id="studentLogin" class="auth-form active">
+                <h2>Student Login</h2>
+                <form id="studentLoginForm">
+                    <div class="form-group">
+                        <label for="studentEmail">Email</label>
+                        <input type="email" id="studentEmail" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="studentPassword">Password</label>
+                        <input type="password" id="studentPassword" class="form-control" required>
+                    </div>
+                    <div id="studentLoginError" class="error-message" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                    <p class="auth-link">Don't have an account? <a href="register.html">Register here</a></p>
+                </form>
+            </div>
+
+            <!-- Counselor Login -->
+            <div id="counselorLogin" class="auth-form">
+                <h2>Counselor Login</h2>
+                <form id="counselorLoginForm">
+                    <div class="form-group">
+                        <label for="counselorEmail">Email</label>
+                        <input type="email" id="counselorEmail" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="counselorPassword">Password</label>
+                        <input type="password" id="counselorPassword" class="form-control" required>
+                    </div>
+                    <div id="counselorLoginError" class="error-message" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                    <p class="auth-link">Don't have an account? <a href="register.html">Register here</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        // Tab switching
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tabName}Login`).classList.add('active');
+            });
+        });
+
+        // Student Login
+        document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('studentEmail').value;
+            const password = document.getElementById('studentPassword').value;
+            await login('student', email, password, 'studentLoginError');
+        });
+
+        // Counselor Login
+        document.getElementById('counselorLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('counselorEmail').value;
+            const password = document.getElementById('counselorPassword').value;
+            await login('counselor', email, password, 'counselorLoginError');
+        });
+
+        async function login(userType, email, password, errorId) {
+            const errorEl = document.getElementById(errorId);
+            errorEl.style.display = 'block';
+            errorEl.textContent = 'Logging in...';
+            errorEl.style.color = '#666';
+
+            try {
+                const endpoint = userType === 'student' ? '/students/login' : '/counselors/login';
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error?.message || 'Login failed');
+                }
+
+                // Store authentication data
+                localStorage.setItem('authToken', data.data.token);
+                const user = { ...data.data.user, role: userType };
+                
+                // Ensure ID property exists
+                if (userType === 'student' && !user.studentID) {
+                    user.studentID = user.StudentID;
+                }
+                if (userType === 'counselor' && !user.counselorID) {
+                    user.counselorID = user.CounselorID;
+                }
+                
+                localStorage.setItem('currentUser', JSON.stringify(user));
+
+                // Redirect to appropriate dashboard
+                if (userType === 'student') {
+                    window.location.href = '/student-dashboard.html';
+                } else {
+                    window.location.href = '/counselor-dashboard.html';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorEl.style.color = '#dc2626';
+                errorEl.textContent = error.message || 'Login failed. Please try again.';
+            }
+        }
+
+        // Check if already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('currentUser');
+            
+            if (token && user) {
+                try {
+                    const userData = JSON.parse(user);
+                    if (userData.role === 'student') {
+                        window.location.href = '/student-dashboard.html';
+                    } else if (userData.role === 'counselor') {
+                        window.location.href = '/counselor-dashboard.html';
+                    }
+                } catch (error) {
+                    // Clear corrupted data
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                }
+            }
+
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
