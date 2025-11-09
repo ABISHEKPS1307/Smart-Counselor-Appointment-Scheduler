@@ -16,6 +16,7 @@ A modern, full-stack web application for managing student-counselor appointments
 - [Tech Stack](#️-tech-stack)
 - [Architecture](#-architecture)
 - [Getting Started](#-getting-started)
+- [GenAI Features](#-genai-features)
 - [API Documentation](#-api-documentation)
 - [Security](#-security)
 - [Deployment](#-deployment)
@@ -40,11 +41,13 @@ A modern, full-stack web application for managing student-counselor appointments
 - **Appointment History** - View all past and upcoming appointments
 - **Counselor Filtering** - Search counselors by specialization type
 
-### 🤖 AI Assistant
-- **Chat Mode** - Ask general questions about counseling services
-- **Smart Recommendations** - AI suggests best counselors based on needs
-- **Feedback Summarization** - Automatically summarize appointment feedback
-- **Response Caching** - Fast responses for common queries
+### 🤖 AI-Powered Features
+- **Feedback Rating System** - AI analyzes student feedback to generate ratings (1-5), sentiment classification, and summaries
+- **Floating Chat Widget** - 24/7 AI assistant with specialized modes (Chat, Wellbeing Tips, Recommendations)
+- **Smart Recommendations** - AI suggests best counselors based on student needs
+- **Sentiment Analysis** - Automatic positive/neutral/negative classification of feedback
+- **Response Caching** - Fast responses for common queries (10-minute cache)
+- **Safety Guardrails** - Crisis detection and appropriate redirects to professional help
 
 ### 🔐 Security & Performance
 - **Bcrypt Password Hashing** - Industry-standard password protection
@@ -231,6 +234,14 @@ A modern, full-stack web application for managing student-counselor appointments
    http://localhost:8080
    ```
 
+7. **Initialize GenAI features** (Optional)
+   
+   Run the feedback schema update:
+   ```bash
+   # Using Azure Portal Query Editor
+   # Copy content from sql/update-schema-feedback.sql and execute
+   ```
+
 ### Docker Development
 
 ```bash
@@ -241,6 +252,115 @@ docker build -t counselor-scheduler .
 docker run -p 8080:8080 --env-file .env counselor-scheduler
 
 # Access at http://localhost:8080
+```
+
+---
+
+## 🤖 GenAI Features
+
+### Overview
+
+Two powerful AI-driven features enhance the counseling experience:
+
+1. **Feedback-Based Counselor Rating System** - Automatically analyze student feedback using Azure OpenAI
+2. **AI Chatbot for Basic Counseling Help** - 24/7 floating chat assistant with specialized modes
+
+📖 **Detailed Documentation**: See [GENAI_FEATURES.md](GENAI_FEATURES.md) for complete implementation guide
+
+### Feature 1: Feedback Rating System
+
+**What it does:**
+- Students submit feedback after appointments
+- Azure OpenAI (GPT-4o-mini) automatically analyzes the feedback
+- Generates 1-5 star rating based on sentiment
+- Classifies sentiment (positive/neutral/negative)
+- Creates concise summaries
+- Provides improvement suggestions for counselors
+
+**For Students:**
+1. Go to "My Appointments" tab
+2. Find past accepted appointments
+3. Click "📝 Give Feedback" button
+4. Write your experience (min 10 characters)
+5. View AI-generated analysis instantly
+
+**For Counselors:**
+- View average rating with star display
+- See sentiment breakdown (positive/neutral/negative)
+- Read AI-generated summaries
+- Review improvement suggestions
+- Track feedback trends
+
+**API Endpoints:**
+```http
+POST /api/feedback                     # Submit feedback
+GET /api/feedback/counselor/:id        # Get counselor feedback stats
+GET /api/feedback/student/:id          # Get student feedback history
+GET /api/feedback/appointment/:id      # Get appointment feedback
+```
+
+### Feature 2: AI Chatbot
+
+**What it does:**
+- Floating chat widget (bottom-right corner)
+- Three specialized modes:
+  - **Chat**: General questions about the platform
+  - **Wellbeing Tips**: Stress management and wellness advice
+  - **Recommendation**: Counselor type suggestions
+- Response caching for faster replies
+- Safety guardrails for crisis detection
+
+**How to use:**
+1. Click the 💬 button in bottom-right corner
+2. Select a chat mode (Chat/Wellbeing/Recommend)
+3. Type your message or use quick actions
+4. Get instant AI-powered responses
+
+**Safety Features:**
+- Detects crisis keywords (suicide, self-harm, emergency)
+- Redirects to professional help when needed
+- Never provides medical diagnoses
+- Rate limited to prevent abuse
+
+**API Endpoint:**
+```http
+POST /api/ai/query
+{
+  "prompt": "I'm stressed about exams",
+  "mode": "wellbeing_tips"
+}
+```
+
+**Supported Modes:**
+- `chat` - General assistance
+- `wellbeing_tips` - Wellness advice
+- `recommendation` - Counselor matching
+- `analyzeFeedback` - Feedback analysis (internal)
+
+### Azure OpenAI Configuration
+
+Requires Azure OpenAI Service with:
+- Model: `gpt-4o-mini` or `gpt-4o`
+- API endpoint and key configured
+- Cache TTL: 10 minutes
+- Rate limit: 20 requests per 15 minutes
+
+### Database Schema
+
+New table for feedback:
+```sql
+CREATE TABLE Feedback (
+    FeedbackID INT PRIMARY KEY,
+    AppointmentID INT NOT NULL,
+    StudentID INT NOT NULL,
+    CounselorID INT NOT NULL,
+    FeedbackText NVARCHAR(MAX),
+    Rating INT NOT NULL,              -- AI-generated 1-5
+    Sentiment NVARCHAR(20),           -- positive/neutral/negative
+    Summary NVARCHAR(500),            -- AI summary
+    ImprovementSuggestions NVARCHAR(1000),
+    CreatedAt DATETIME2
+)
 ```
 
 ---
@@ -864,13 +984,22 @@ SOFTWARE.
 - [ ] Multi-language support
 - [ ] Dark mode
 - [ ] Appointment rescheduling
-- [ ] Feedback/rating system
+- [x] Feedback/rating system with AI analysis
+- [x] AI chatbot for student support
 
 ---
 
 ## 📈 Version History
 
-### v1.0.0 (Current - November 2025)
+### v1.1.0 (Current - November 2025)
+- ✅ AI-powered feedback rating system
+- ✅ Floating AI chatbot with 3 modes
+- ✅ Sentiment analysis for feedback
+- ✅ Counselor ratings dashboard
+- ✅ Safety guardrails for sensitive content
+- ✅ Response caching for AI queries
+
+### v1.0.0 (November 2025)
 - ✅ Student and counselor authentication
 - ✅ Appointment booking system
 - ✅ AI-powered chat assistant

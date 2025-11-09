@@ -416,6 +416,12 @@ function displayAppointments(appointments) {
         try {
             const statusClass = `status-${appt.Status.toLowerCase()}`;
             const dateStr = new Date(appt.Date).toLocaleDateString();
+            const isAccepted = appt.Status === 'Accepted';
+            const appointmentDate = new Date(appt.Date);
+            const isPast = appointmentDate < new Date();
+
+            // Show feedback button for past accepted appointments
+            const showFeedbackButton = isAccepted && isPast;
 
             return `
                 <div class="appointment-card">
@@ -429,6 +435,17 @@ function displayAppointments(appointments) {
                         <div style="margin-top: 0.5rem;">
                             <span class="appointment-status ${statusClass}">${appt.Status}</span>
                         </div>
+                        ${showFeedbackButton ? `
+                            <div style="margin-top: 0.75rem;">
+                                <button 
+                                    class="btn btn-sm btn-primary" 
+                                    onclick="openFeedbackModal(${appt.AppointmentID}, ${appt.CounselorID}, '${appt.CounselorName}')"
+                                    style="font-size: 0.875rem;"
+                                >
+                                    📝 Give Feedback
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -438,3 +455,121 @@ function displayAppointments(appointments) {
         }
     }).filter(html => html).join('');
 }
+
+// Open feedback modal
+function openFeedbackModal(appointmentID, counselorID, counselorName) {
+    const modal = document.getElementById('feedbackModal');
+    const form = document.getElementById('feedbackForm');
+    
+    // Reset form
+    form.reset();
+    document.getElementById('feedbackAppointmentID').value = appointmentID;
+    document.getElementById('feedbackCounselorID').value = counselorID;
+    document.getElementById('feedbackError').style.display = 'none';
+    document.getElementById('feedbackSuccess').style.display = 'none';
+    document.getElementById('feedbackAnalysis').style.display = 'none';
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+// Close feedback modal
+function closeFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    modal.style.display = 'none';
+}
+
+// Make functions globally available
+window.openFeedbackModal = openFeedbackModal;
+window.closeFeedbackModal = closeFeedbackModal;
+
+// Feedback modal event listeners
+document.getElementById('closeFeedbackModal').addEventListener('click', closeFeedbackModal);
+document.getElementById('cancelFeedback').addEventListener('click', closeFeedbackModal);
+
+// Close modal on outside click
+window.addEventListener('click', (e) => {
+    const modal = document.getElementById('feedbackModal');
+    if (e.target === modal) {
+        closeFeedbackModal();
+    }
+});
+
+// Submit feedback form
+document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const errorEl = document.getElementById('feedbackError');
+    const successEl = document.getElementById('feedbackSuccess');
+    const analysisEl = document.getElementById('feedbackAnalysis');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+    analysisEl.style.display = 'none';
+    
+    const appointmentID = parseInt(document.getElementById('feedbackAppointmentID').value);
+    const counselorID = parseInt(document.getElementById('feedbackCounselorID').value);
+    const feedback = document.getElementById('feedbackText').value.trim();
+    const studentID = currentUser.StudentID || currentUser.studentID;
+    
+    // Validate
+    if (!feedback || feedback.length < 10) {
+        errorEl.textContent = 'Feedback must be at least 10 characters';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    // Disable submit button
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/feedback`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                appointmentID,
+                studentID,
+                counselorID,
+                feedback
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error?.message || 'Failed to submit feedback');
+        }
+        
+        // Show success and AI analysis
+        successEl.textContent = 'Feedback submitted successfully!';
+        successEl.style.display = 'block';
+        
+        if (data.data.analysis) {
+            const analysis = data.data.analysis;
+            document.getElementById('analysisRating').textContent = `⭐ Rating: ${analysis.rating}/5`;
+            document.getElementById('analysisSentiment').textContent = `😊 Sentiment: ${analysis.sentiment}`;
+            document.getElementById('analysisSummary').textContent = `📋 Summary: ${analysis.summary}`;
+            analysisEl.style.display = 'block';
+        }
+        
+        // Close modal after 3 seconds
+        setTimeout(() => {
+            closeFeedbackModal();
+            // Reload appointments to update feedback buttons
+            loadMyAppointments();
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Feedback submission error:', error);
+        errorEl.textContent = error.message || 'Failed to submit feedback';
+        errorEl.style.display = 'block';
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Feedback';
+    }
+});

@@ -19,6 +19,7 @@ import studentsRoutes from './routes/students.routes.js';
 import counselorsRoutes from './routes/counselors.routes.js';
 import appointmentsRoutes from './routes/appointments.routes.js';
 import aiRoutes from './routes/ai.routes.js';
+import feedbackRoutes from './routes/feedback.routes.js';
 
 // Swagger documentation
 import { setupSwagger } from './swagger.js';
@@ -83,6 +84,7 @@ app.use('/api/students', studentsRoutes);
 app.use('/api/counselors', counselorsRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

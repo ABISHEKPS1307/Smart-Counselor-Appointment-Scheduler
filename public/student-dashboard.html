@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard - Smart Counselor Scheduler</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/chatbot.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
@@ -91,6 +92,49 @@
         </section>
     </main>
 
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📝 Submit Feedback</h3>
+                <button class="modal-close" id="closeFeedbackModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: #6b7280; margin-bottom: 1rem;">Share your experience with this appointment</p>
+                <form id="feedbackForm">
+                    <input type="hidden" id="feedbackAppointmentID">
+                    <input type="hidden" id="feedbackCounselorID">
+                    <div class="form-group">
+                        <label for="feedbackText">Your Feedback</label>
+                        <textarea 
+                            id="feedbackText" 
+                            class="form-control" 
+                            rows="5" 
+                            placeholder="Tell us about your counseling session..."
+                            required
+                            minlength="10"
+                            maxlength="1000"
+                        ></textarea>
+                        <small style="color: #6b7280;">Minimum 10 characters</small>
+                    </div>
+                    <div id="feedbackError" class="error-message" style="display: none;"></div>
+                    <div id="feedbackSuccess" class="success-message" style="display: none;"></div>
+                    <div id="feedbackAnalysis" style="display: none; margin-top: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 0.5rem; border-left: 4px solid #3b82f6;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e40af;">AI Analysis</h4>
+                        <p id="analysisRating" style="margin: 0.25rem 0;"></p>
+                        <p id="analysisSentiment" style="margin: 0.25rem 0;"></p>
+                        <p id="analysisSummary" style="margin: 0.25rem 0;"></p>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelFeedback">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/student-dashboard.js"></script>
+    <script src="/static/chatbot.js"></script>
 </body>
 </html>

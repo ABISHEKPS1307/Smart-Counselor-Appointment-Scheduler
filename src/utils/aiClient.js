@@ -58,8 +58,9 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
     throw new Error('Invalid prompt');
   }
   
-  if (!['chat', 'summarizeFeedback', 'recommendation'].includes(mode)) {
-    throw new Error('Invalid mode. Must be: chat, summarizeFeedback, or recommendation');
+  const validModes = ['chat', 'summarizeFeedback', 'recommendation', 'wellbeing_tips', 'analyzeFeedback'];
+  if (!validModes.includes(mode)) {
+    throw new Error(`Invalid mode. Must be one of: ${validModes.join(', ')}`);
   }
   
   // Check cache first
@@ -83,15 +84,24 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
   
   // Build system message based on mode
   let systemMessage = '';
+  let maxTokens = options.maxTokens || 500;
+  
   switch (mode) {
     case 'chat':
-      systemMessage = 'You are a helpful AI assistant for a counselor appointment scheduler. Provide concise and helpful responses.';
+      systemMessage = 'You are a helpful AI assistant for a counselor appointment scheduler. Provide concise, supportive, and helpful responses. Never provide medical advice or diagnoses. If a student mentions serious mental health concerns, suicide, self-harm, or crisis situations, always recommend they contact a real counselor immediately or call emergency services. Keep responses positive and safe.';
+      break;
+    case 'wellbeing_tips':
+      systemMessage = 'You are a wellbeing assistant providing general wellness tips and stress management advice. Provide simple, actionable, and positive suggestions for students. Never provide medical advice or diagnoses. Keep responses brief and supportive. If serious issues are mentioned, recommend consulting a real counselor.';
+      break;
+    case 'recommendation':
+      systemMessage = 'You are an AI counselor recommendation assistant. Based on the student\'s needs, suggest the most suitable counselor type (Academic, Career, Personal, or Mental Health) and explain why. Be concise and helpful. For serious mental health concerns, always recommend Mental Health counselors and suggest seeking immediate help.';
+      break;
+    case 'analyzeFeedback':
+      systemMessage = 'You are an AI feedback analyzer. Analyze the student feedback and return a JSON object with: {"rating": <1-5>, "sentiment": "<positive|neutral|negative>", "summary": "<brief summary>", "improvementSuggestions": "<optional suggestions for counselor>"}. Base rating on the overall tone and content. Be objective and constructive.';
+      maxTokens = 300;
       break;
     case 'summarizeFeedback':
       systemMessage = 'You are an AI assistant that summarizes student feedback. Extract key points, sentiment, and actionable insights. Be concise.';
-      break;
-    case 'recommendation':
-      systemMessage = 'You are an AI counselor recommendation assistant. Based on the student\'s needs, suggest the most suitable counselor type (Academic, Career, Personal, or Mental Health) and explain why.';
       break;
   }
   
@@ -103,7 +113,7 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       { role: 'system', content: systemMessage },
       { role: 'user', content: prompt }
     ],
-    max_tokens: options.maxTokens || 500,
+    max_tokens: maxTokens,
     temperature: options.temperature || 0.7,
     top_p: options.topP || 0.95,
     frequency_penalty: 0,
