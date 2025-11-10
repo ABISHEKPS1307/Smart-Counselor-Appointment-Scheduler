@@ -64,11 +64,30 @@ jobs:
             ENABLE_ORYX_BUILD=false \
             WEBSITE_RUN_FROM_PACKAGE=1
     
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        package: deploy.zip
+    - name: Stop Web App
+      run: |
+        az webapp stop \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
+        echo "Waiting for app to stop..."
+        sleep 10
+    
+    - name: Deploy to Azure Web App (Direct ZIP)
+      run: |
+        # Deploy using Azure CLI directly to avoid Oryx build
+        az webapp deploy \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --src-path deploy.zip \
+          --type zip \
+          --async false \
+          --clean true
+    
+    - name: Start Web App
+      run: |
+        az webapp start \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
     
     - name: Restart Web App
       run: |
