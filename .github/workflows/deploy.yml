@@ -51,13 +51,7 @@ jobs:
         run: |
           echo "Deploying to Container App..."
           
-          # Update container image
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          
-          # Set secrets
+          # Set secrets first (doesn't create a new revision)
           az containerapp secret set \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -65,10 +59,13 @@ jobs:
               sql-password="${{ secrets.SQL_PASSWORD }}" \
               jwt-secret="${{ secrets.JWT_SECRET }}"
           
-          # Update environment variables
+          echo "Secrets updated"
+          
+          # Single update with image + all env vars (creates only ONE revision)
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --set-env-vars \
               NODE_ENV=production \
               PORT=8080 \
