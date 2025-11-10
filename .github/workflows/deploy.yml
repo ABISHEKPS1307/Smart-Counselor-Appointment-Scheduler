@@ -49,9 +49,10 @@ jobs:
       
       - name: Deploy to Container App
         run: |
-          echo "Deploying to Container App..."
+          echo "🚀 Deploying to Container App..."
           
-          # Set secrets first (doesn't create a new revision)
+          # Set secrets (doesn't create a new revision)
+          echo "Setting secrets..."
           az containerapp secret set \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -59,9 +60,10 @@ jobs:
               sql-password="${{ secrets.SQL_PASSWORD }}" \
               jwt-secret="${{ secrets.JWT_SECRET }}"
           
-          echo "Secrets updated"
+          echo "✅ Secrets updated"
           
           # Single update with image + all env vars (creates only ONE revision)
+          echo "Updating container app..."
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -80,7 +82,20 @@ jobs:
               AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
               AZURE_OPENAI_API_KEY=placeholder
           
-          echo "✅ Container App updated successfully"
+          # Restart to apply changes
+          echo "Restarting container app..."
+          LATEST_REVISION=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.latestRevisionName \
+            -o tsv)
+          
+          az containerapp revision restart \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision $LATEST_REVISION
+          
+          echo "✅ Container App deployed successfully"
       
       - name: Get Container App URL
         id: get-url
