@@ -1,0 +1,199 @@
+name: Production Deploy (Terraform + Docker)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  TERRAFORM_VERSION: '1.6.0'
+  WORKING_DIR: './terraform'
+  
+jobs:
+  terraform-provision:
+    name: Provision Infrastructure
+    runs-on: ubuntu-latest
+    outputs:
+      acr_login_server: ${{ steps.terraform_output.outputs.acr_login_server }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform init
+      
+      - name: Terraform Validate
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform validate
+      
+      - name: Terraform Plan
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          terraform plan -out=tfplan \
+            -var="resource_group_name=CloudProjectNew" \
+            -var="app_service_name=counselor-scheduler-123" \
+            -var="acr_name=counselorsch123acr"
+      
+      - name: Terraform Apply
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform apply -auto-approve tfplan
+      
+      - name: Get Terraform Outputs
+        id: terraform_output
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          ACR_SERVER=$(terraform output -raw acr_login_server)
+          echo "acr_login_server=$ACR_SERVER" >> $GITHUB_OUTPUT
+          echo "ACR Login Server: $ACR_SERVER"
+
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: terraform-provision
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Get ACR Credentials
+        id: acr_creds
+        run: |
+          ACR_USERNAME=$(az acr credential show --name counselorsch123acr --query username -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name counselorsch123acr --query "passwords[0].value" -o tsv)
+          echo "::add-mask::$ACR_PASSWORD"
+          echo "username=$ACR_USERNAME" >> $GITHUB_OUTPUT
+          echo "password=$ACR_PASSWORD" >> $GITHUB_OUTPUT
+      
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ needs.terraform-provision.outputs.acr_login_server }}
+          username: ${{ steps.acr_creds.outputs.username }}
+          password: ${{ steps.acr_creds.outputs.password }}
+      
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_TAG="${{ needs.terraform-provision.outputs.acr_login_server }}/counselor-app:${{ github.sha }}"
+          IMAGE_LATEST="${{ needs.terraform-provision.outputs.acr_login_server }}/counselor-app:latest"
+          
+          docker build -t $IMAGE_TAG -t $IMAGE_LATEST .
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+          
+          echo "✅ Pushed: $IMAGE_TAG"
+          echo "✅ Pushed: $IMAGE_LATEST"
+
+  deploy:
+    name: Deploy to App Service
+    runs-on: ubuntu-latest
+    needs: [terraform-provision, build-and-push]
+    
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Configure App Settings
+        run: |
+          az webapp config appsettings set \
+            --resource-group CloudProjectNew \
+            --name counselor-scheduler-123 \
+            --settings \
+              NODE_ENV=production \
+              PORT=8080 \
+              WEBSITES_PORT=8080 \
+              SQL_SERVER=scmainserver.database.windows.net \
+              SQL_DATABASE=sc-db \
+              SQL_USER=adminuser \
+              SQL_PASSWORD="${{ secrets.SQL_PASSWORD }}" \
+              SQL_ENCRYPT=true \
+              SQL_TRUST_SERVER_CERTIFICATE=false \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              JWT_EXPIRES_IN=1h \
+              AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
+              AZURE_OPENAI_API_KEY=placeholder
+      
+      - name: Get ACR Credentials
+        id: acr_creds
+        run: |
+          ACR_USERNAME=$(az acr credential show --name counselorsch123acr --query username -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name counselorsch123acr --query "passwords[0].value" -o tsv)
+          echo "::add-mask::$ACR_PASSWORD"
+          echo "username=$ACR_USERNAME" >> $GITHUB_OUTPUT
+          echo "password=$ACR_PASSWORD" >> $GITHUB_OUTPUT
+      
+      - name: Configure Container Settings
+        run: |
+          az webapp config container set \
+            --resource-group CloudProjectNew \
+            --name counselor-scheduler-123 \
+            --docker-custom-image-name "${{ needs.terraform-provision.outputs.acr_login_server }}/counselor-app:${{ github.sha }}" \
+            --docker-registry-server-url "https://${{ needs.terraform-provision.outputs.acr_login_server }}" \
+            --docker-registry-server-user "${{ steps.acr_creds.outputs.username }}" \
+            --docker-registry-server-password "${{ steps.acr_creds.outputs.password }}"
+      
+      - name: Restart App Service
+        run: |
+          az webapp restart \
+            --resource-group CloudProjectNew \
+            --name counselor-scheduler-123
+          echo "✅ App Service restarted with new container image"
+      
+      - name: Wait for Warmup
+        run: |
+          echo "⏳ Waiting 60 seconds for container to start..."
+          sleep 60
+      
+      - name: Health Check
+        run: |
+          MAX_ATTEMPTS=10
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT+1))
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking health endpoint..."
+            
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://counselor-scheduler-123-bjayctaaejfccyas.centralindia-01.azurewebsites.net/api/health || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Health check PASSED! (HTTP $HTTP_CODE)"
+              echo "✅ Application is running successfully"
+              exit 0
+            else
+              echo "⚠️  Health check returned HTTP $HTTP_CODE, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
+          exit 1
+      
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "========================================" 
+          echo "🎉 DEPLOYMENT SUCCESSFUL!"
+          echo "========================================"
+          echo "App URL: https://counselor-scheduler-123-bjayctaaejfccyas.centralindia-01.azurewebsites.net"
+          echo "Image: ${{ needs.terraform-provision.outputs.acr_login_server }}/counselor-app:${{ github.sha }}"
+          echo "Health: PASSING"
+          echo "========================================"
