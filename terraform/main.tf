@@ -11,6 +11,10 @@ terraform {
 
 provider "azurerm" {
   features {}
+  
+  # Skip automatic resource provider registration
+  # Service principal doesn't have subscription-level permissions
+  resource_provider_registrations = "none"
 }
 
 # Use existing resource group
