@@ -111,5 +111,4 @@ azure-publish-profile.xml
 docker-compose.*.yml
 app.zip
 
-# Terraform (not used anymore)
-terraform/
+# Terraform - infrastructure as code (keep directory, ignore state files)
