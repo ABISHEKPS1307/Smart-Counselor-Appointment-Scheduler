@@ -1,0 +1,103 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: counselor-scheduler-123
+  RESOURCE_GROUP: CloudProjectNew
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    
+    - name: Install dependencies
+      run: npm ci --production
+    
+    - name: Create deployment package
+      run: |
+        zip -r deploy.zip src public sql node_modules package.json package-lock.json .gitignore
+    
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Configure App Service for Node.js
+      run: |
+        az webapp config set \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --linux-fx-version "NODE|22-lts" \
+          --startup-file "node src/server.js"
+    
+    - name: Set App Service environment variables
+      run: |
+        az webapp config appsettings set \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --settings \
+            NODE_ENV=production \
+            PORT=8080 \
+            SQL_SERVER=scmainserver.database.windows.net \
+            SQL_DATABASE=sc-db \
+            SQL_USER=adminuser \
+            SQL_PASSWORD="${{ secrets.SQL_PASSWORD }}" \
+            SQL_ENCRYPT=true \
+            SQL_TRUST_SERVER_CERTIFICATE=false \
+            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            JWT_EXPIRES_IN=1h \
+            AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
+            AZURE_OPENAI_API_KEY=placeholder \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+            ENABLE_ORYX_BUILD=false
+    
+    - name: Stop Web App
+      run: |
+        az webapp stop \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
+        echo "Waiting for app to stop..."
+        sleep 10
+    
+    - name: Deploy to Azure Web App (Direct ZIP)
+      run: |
+        # Deploy using Azure CLI directly to avoid Oryx build
+        # Using async mode to avoid timeout issues
+        az webapp deploy \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --src-path deploy.zip \
+          --type zip \
+          --async true \
+          --timeout 300
+        echo "Deployment initiated, waiting for completion..."
+        sleep 60
+    
+    - name: Start Web App
+      run: |
+        az webapp start \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
+    
+    - name: Restart Web App
+      run: |
+        az webapp restart \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
+    
+    - name: Deployment Complete
+      run: |
+        echo "✅ Deployment successful!"
+        echo "🌐 App URL: https://${{ env.AZURE_WEBAPP_NAME }}-bjayctaaejfccyas.centralindia-01.azurewebsites.net"
