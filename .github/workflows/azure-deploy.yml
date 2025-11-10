@@ -61,8 +61,7 @@ jobs:
             AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
             AZURE_OPENAI_API_KEY=placeholder \
             SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-            ENABLE_ORYX_BUILD=false \
-            WEBSITE_RUN_FROM_PACKAGE=1
+            ENABLE_ORYX_BUILD=false
     
     - name: Stop Web App
       run: |
