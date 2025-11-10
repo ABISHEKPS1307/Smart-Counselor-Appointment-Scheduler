@@ -26,14 +26,22 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
       - name: Create ACR (if not exists)
-        continue-on-error: true
         run: |
-          az acr create \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.ACR_NAME }} \
-            --sku Basic \
-            --location centralindia \
-            --admin-enabled true || echo "ACR might already exist"
+          # Check if ACR exists
+          ACR_EXISTS=$(az acr show --name ${{ env.ACR_NAME }} --query id -o tsv 2>/dev/null || echo "")
+          
+          if [ -z "$ACR_EXISTS" ]; then
+            echo "Creating ACR: ${{ env.ACR_NAME }}"
+            az acr create \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --name ${{ env.ACR_NAME }} \
+              --sku Basic \
+              --location centralindia \
+              --admin-enabled true
+            echo "✅ ACR created successfully"
+          else
+            echo "✅ ACR already exists: ${{ env.ACR_NAME }}"
+          fi
       
       - name: Build and Push to ACR
         run: |
