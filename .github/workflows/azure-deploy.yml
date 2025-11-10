@@ -75,13 +75,16 @@ jobs:
     - name: Deploy to Azure Web App (Direct ZIP)
       run: |
         # Deploy using Azure CLI directly to avoid Oryx build
+        # Using async mode to avoid timeout issues
         az webapp deploy \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --src-path deploy.zip \
           --type zip \
-          --async false \
-          --clean true
+          --async true \
+          --timeout 300
+        echo "Deployment initiated, waiting for completion..."
+        sleep 60
     
     - name: Start Web App
       run: |
