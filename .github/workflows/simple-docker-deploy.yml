@@ -1,0 +1,129 @@
+name: Simple Docker Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ACR_NAME: counselorsch123acr
+  IMAGE_NAME: counselor-app
+  RESOURCE_GROUP: CloudProjectNew
+  APP_NAME: counselor-scheduler-123
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Create ACR (if not exists)
+        continue-on-error: true
+        run: |
+          az acr create \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.ACR_NAME }} \
+            --sku Basic \
+            --location centralindia \
+            --admin-enabled true || echo "ACR might already exist"
+      
+      - name: Build and Push to ACR
+        run: |
+          # Login to ACR
+          az acr login --name ${{ env.ACR_NAME }}
+          
+          # Build image
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                     ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          
+          # Push to ACR
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          
+          echo "✅ Image pushed: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+      
+      - name: Configure App Settings
+        run: |
+          az webapp config appsettings set \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.APP_NAME }} \
+            --settings \
+              NODE_ENV=production \
+              PORT=8080 \
+              WEBSITES_PORT=8080 \
+              SQL_SERVER=scmainserver.database.windows.net \
+              SQL_DATABASE=sc-db \
+              SQL_USER=adminuser \
+              SQL_PASSWORD="${{ secrets.SQL_PASSWORD }}" \
+              SQL_ENCRYPT=true \
+              SQL_TRUST_SERVER_CERTIFICATE=false \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              JWT_EXPIRES_IN=1h \
+              AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
+              AZURE_OPENAI_API_KEY=placeholder
+      
+      - name: Deploy Container to App Service
+        run: |
+          # Get ACR credentials
+          ACR_USERNAME=$(az acr credential show --name ${{ env.ACR_NAME }} --query username -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR_NAME }} --query "passwords[0].value" -o tsv)
+          
+          # Configure container
+          az webapp config container set \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.APP_NAME }} \
+            --docker-custom-image-name "${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --docker-registry-server-url "https://${{ env.ACR_NAME }}.azurecr.io" \
+            --docker-registry-server-user "$ACR_USERNAME" \
+            --docker-registry-server-password "$ACR_PASSWORD"
+          
+          # Restart app
+          az webapp restart --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.APP_NAME }}
+          
+          echo "✅ Container deployed and app restarted"
+      
+      - name: Wait for App Startup
+        run: |
+          echo "⏳ Waiting 90 seconds for container to start..."
+          sleep 90
+      
+      - name: Health Check
+        run: |
+          MAX_ATTEMPTS=15
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT+1))
+            echo "[$ATTEMPT/$MAX_ATTEMPTS] Checking health endpoint..."
+            
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              https://${{ env.APP_NAME }}-bjayctaaejfccyas.centralindia-01.azurewebsites.net/api/health || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Health check PASSED! (HTTP $HTTP_CODE)"
+              echo ""
+              echo "========================================" 
+              echo "🎉 DEPLOYMENT SUCCESSFUL!"
+              echo "========================================"
+              echo "App URL: https://${{ env.APP_NAME }}-bjayctaaejfccyas.centralindia-01.azurewebsites.net"
+              echo "Image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+              echo "========================================"
+              exit 0
+            else
+              echo "⚠️  HTTP $HTTP_CODE - Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
+          echo "Check logs: az webapp log tail --name ${{ env.APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}"
+          exit 1
