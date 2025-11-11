@@ -103,6 +103,21 @@ app.use((req, res, next) => {
 // Serve static files
 app.use(express.static('public'));
 
+// Fallback endpoint for version.json if static file doesn't exist
+app.get('/version.json', (req, res) => {
+  const version = {
+    version: `1.${process.env.GIT_COMMIT_HASH || 'unknown'}.${Date.now()}`,
+    commitHash: process.env.GIT_COMMIT_HASH || 'unknown',
+    branch: 'main',
+    buildTime: new Date().toISOString(),
+    buildTimestamp: Date.now()
+  };
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.json(version);
+});
+
 // Setup Swagger documentation
 setupSwagger(app);
 

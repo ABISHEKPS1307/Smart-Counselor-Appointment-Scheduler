@@ -58,6 +58,10 @@ jobs:
         run: |
           echo "🚀 Deploying to Container App..."
           
+          # Get commit hash for version tracking
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "Deploying with commit hash: $SHORT_SHA"
+          
           # Set secrets (doesn't create a new revision)
           echo "Setting secrets..."
           az containerapp secret set \
@@ -87,7 +91,8 @@ jobs:
               SQL_TRUST_SERVER_CERTIFICATE=false \
               JWT_SECRET=secretref:jwt-secret \
               JWT_EXPIRES_IN=1h \
-              GEMINI_API_KEY=secretref:gemini-api-key
+              GEMINI_API_KEY=secretref:gemini-api-key \
+              GIT_COMMIT_HASH=$SHORT_SHA
           
           # Restart to apply changes
           echo "Restarting container app..."
