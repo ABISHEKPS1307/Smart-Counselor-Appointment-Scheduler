@@ -22,6 +22,9 @@ RUN npm ci --only=production && \
 
 FROM node:22-alpine
 
+# Build argument for commit hash
+ARG GIT_COMMIT_HASH=unknown
+
 # Set NODE_ENV to production
 ENV NODE_ENV=production
 
@@ -43,6 +46,13 @@ COPY src ./src
 COPY public ./public
 COPY sql ./sql
 COPY scripts ./scripts
+
+# Generate version.json during build with commit hash
+RUN BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
+    BUILD_TIMESTAMP=$(date +%s) && \
+    echo "{\"version\":\"1.${GIT_COMMIT_HASH}.${BUILD_TIMESTAMP}\",\"commitHash\":\"${GIT_COMMIT_HASH}\",\"branch\":\"main\",\"buildTime\":\"${BUILD_TIME}\",\"buildTimestamp\":${BUILD_TIMESTAMP}}" > /app/public/version.json && \
+    echo "Generated version.json:" && \
+    cat /app/public/version.json
 
 # Change ownership to non-root user
 RUN chown -R nodejs:nodejs /app

@@ -20,18 +20,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      
-      - name: Update version.json
-        run: |
-          echo "Updating version file with build info..."
-          node scripts/update-version.js
-          echo "Version file updated:"
-          cat public/version.json
-      
       - name: Login to Azure
         uses: azure/login@v1
         with:
@@ -46,9 +34,16 @@ jobs:
       
       - name: Build and Push Docker Image
         run: |
-          # Build image
+          # Get short commit hash
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "Building with commit hash: $SHORT_SHA"
+          
+          # Build image with commit hash
           echo "Building Docker image..."
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker build \
+            --build-arg GIT_COMMIT_HASH=$SHORT_SHA \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            .
           docker tag ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
                      ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
           
