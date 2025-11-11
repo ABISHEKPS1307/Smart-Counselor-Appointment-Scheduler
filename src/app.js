@@ -72,6 +72,34 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Cache control for static files
+app.use((req, res, next) => {
+  // version.json should NEVER be cached
+  if (req.path === '/version.json') {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+  }
+  // HTML files - minimal cache (check for updates)
+  else if (req.path.endsWith('.html') || req.path === '/') {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  }
+  // CSS/JS with version query - cache for 1 year
+  else if ((req.path.endsWith('.css') || req.path.endsWith('.js')) && req.query.v) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+  // CSS/JS without version - cache for 1 hour only
+  else if (req.path.endsWith('.css') || req.path.endsWith('.js')) {
+    res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+  }
+  // Images and other assets - cache for 1 week
+  else if (req.path.match(/\.(jpg|jpeg|png|gif|ico|svg|webp|woff|woff2|ttf|eot)$/)) {
+    res.setHeader('Cache-Control', 'public, max-age=604800');
+  }
+  next();
+});
+
 // Serve static files
 app.use(express.static('public'));
 

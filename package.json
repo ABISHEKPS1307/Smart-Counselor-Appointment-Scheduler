@@ -11,7 +11,9 @@
     "test:coverage": "npm test -- --coverage",
     "test:watch": "npm test -- --watch",
     "lint": "eslint src/",
-    "audit": "npm audit --audit-level=moderate"
+    "audit": "npm audit --audit-level=moderate",
+    "update-version": "node scripts/update-version.js",
+    "prebuild": "npm run update-version"
   },
   "keywords": [
     "appointments",

@@ -42,6 +42,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY src ./src
 COPY public ./public
 COPY sql ./sql
+COPY scripts ./scripts
 
 # Change ownership to non-root user
 RUN chown -R nodejs:nodejs /app

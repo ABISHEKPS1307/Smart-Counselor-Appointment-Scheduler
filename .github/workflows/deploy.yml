@@ -20,6 +20,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Update version.json
+        run: |
+          echo "Updating version file with build info..."
+          node scripts/update-version.js
+          echo "Version file updated:"
+          cat public/version.json
+      
       - name: Login to Azure
         uses: azure/login@v1
         with:
