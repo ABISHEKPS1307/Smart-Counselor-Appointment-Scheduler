@@ -1,5 +1,5 @@
 /**
- * Azure OpenAI Client
+ * Google Gemini AI Client
  * Handles AI requests with caching and rate limiting
  */
 
@@ -17,23 +17,24 @@ const aiCache = new LRUCache({
   updateAgeOnHas: false
 });
 
-let openaiApiKey = null;
+let geminiApiKey = null;
 
 /**
- * Initialize OpenAI API key from Key Vault
+ * Initialize Gemini API key from environment or Key Vault
  */
-async function initializeOpenAI() {
-  openaiApiKey = await getSecret('AZURE-OPENAI-API-KEY', 'AZURE_OPENAI_API_KEY');
+async function initializeGemini() {
+  // Try environment variable first, then Key Vault
+  geminiApiKey = process.env.GEMINI_API_KEY || await getSecret('GEMINI-API-KEY', 'GEMINI_API_KEY');
   
-  if (!openaiApiKey) {
-    logger.warn('Azure OpenAI API key not configured');
+  if (!geminiApiKey) {
+    logger.warn('Google Gemini API key not configured');
   } else {
-    logger.info('Azure OpenAI client initialized');
+    logger.info('Google Gemini AI client initialized');
   }
 }
 
 // Initialize on module load
-initializeOpenAI();
+initializeGemini();
 
 /**
  * Generate cache key from prompt and mode
@@ -77,8 +78,8 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
   }
   
   // Check if API key is available
-  if (!openaiApiKey) {
-    logger.error('Azure OpenAI API key not available');
+  if (!geminiApiKey) {
+    logger.error('Google Gemini API key not available');
     throw new Error('AI service not configured');
   }
   
@@ -105,19 +106,23 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       break;
   }
   
-  // Prepare request
-  const endpoint = `${config.openai.endpoint}/openai/deployments/${config.openai.deploymentName}/chat/completions?api-version=${config.openai.apiVersion}`;
+  // Prepare request for Gemini API
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+  
+  // Combine system message and user prompt for Gemini
+  const combinedPrompt = `${systemMessage}\n\nUser Query: ${prompt}`;
   
   const requestBody = {
-    messages: [
-      { role: 'system', content: systemMessage },
-      { role: 'user', content: prompt }
-    ],
-    max_tokens: maxTokens,
-    temperature: options.temperature || 0.7,
-    top_p: options.topP || 0.95,
-    frequency_penalty: 0,
-    presence_penalty: 0
+    contents: [{
+      parts: [{
+        text: combinedPrompt
+      }]
+    }],
+    generationConfig: {
+      temperature: options.temperature || 0.7,
+      topP: options.topP || 0.95,
+      maxOutputTokens: maxTokens
+    }
   };
   
   const startTime = Date.now();
@@ -125,24 +130,23 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
   try {
     const response = await axios.post(endpoint, requestBody, {
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': openaiApiKey
+        'Content-Type': 'application/json'
       },
       timeout: 30000 // 30 second timeout
     });
     
     const duration = Date.now() - startTime;
-    const aiResponse = response.data.choices[0].message.content;
+    const aiResponse = response.data.candidates[0].content.parts[0].text;
     
     // Cache the response
     aiCache.set(cacheKey, aiResponse);
     
-    logger.info('AI request completed', {
+    logger.info('Gemini AI request completed', {
       mode,
       duration,
       promptLength: prompt.length,
       responseLength: aiResponse.length,
-      tokens: response.data.usage?.total_tokens
+      model: 'gemini-1.5-flash'
     });
     
     return {

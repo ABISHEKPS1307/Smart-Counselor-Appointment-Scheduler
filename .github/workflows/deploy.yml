@@ -65,7 +65,8 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --secrets \
               sql-password="${{ secrets.SQL_PASSWORD }}" \
-              jwt-secret="${{ secrets.JWT_SECRET }}"
+              jwt-secret="${{ secrets.JWT_SECRET }}" \
+              gemini-api-key="${{ secrets.GEMINI_API_KEY }}"
           
           echo "✅ Secrets updated"
           
@@ -86,8 +87,7 @@ jobs:
               SQL_TRUST_SERVER_CERTIFICATE=false \
               JWT_SECRET=secretref:jwt-secret \
               JWT_EXPIRES_IN=1h \
-              AZURE_OPENAI_ENDPOINT=https://placeholder.openai.azure.com/ \
-              AZURE_OPENAI_API_KEY=placeholder
+              GEMINI_API_KEY=secretref:gemini-api-key
           
           # Restart to apply changes
           echo "Restarting container app..."
