@@ -545,16 +545,27 @@ document.getElementById('feedbackForm').addEventListener('submit', async (e) => 
             throw new Error(data.error?.message || 'Failed to submit feedback');
         }
         
-        // Show success and AI analysis
+        // Show success message
         successEl.textContent = 'Feedback submitted successfully!';
         successEl.style.display = 'block';
         
+        // Show analysis (AI or default)
         if (data.data.analysis) {
             const analysis = data.data.analysis;
+            const aiUsed = analysis.aiAnalyzed !== false;
+            
             document.getElementById('analysisRating').textContent = `⭐ Rating: ${analysis.rating}/5`;
             document.getElementById('analysisSentiment').textContent = `😊 Sentiment: ${analysis.sentiment}`;
-            document.getElementById('analysisSummary').textContent = `📋 Summary: ${analysis.summary}`;
+            document.getElementById('analysisSummary').textContent = `${aiUsed ? '🤖 AI Analysis' : '📋 Summary'}: ${analysis.summary}`;
             analysisEl.style.display = 'block';
+            
+            // Add note if AI was not used
+            if (!aiUsed) {
+                const noteEl = document.createElement('p');
+                noteEl.style.cssText = 'margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280; font-style: italic;';
+                noteEl.textContent = '💡 AI analysis is temporarily unavailable. Your feedback has been saved.';
+                analysisEl.appendChild(noteEl);
+            }
         }
         
         // Close modal after 3 seconds

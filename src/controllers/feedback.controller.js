@@ -49,9 +49,13 @@ export async function submitFeedback(req, res, next) {
       return sendError(res, 'Feedback already submitted for this appointment', 409);
     }
 
-    // Call Azure OpenAI to analyze feedback
-    logger.info('Analyzing feedback with AI', { appointmentID, studentID });
-    const aiPrompt = `Analyze this student feedback about a counseling session and provide structured analysis:
+    // Try to analyze feedback with AI (graceful fallback if unavailable)
+    let aiAnalysis;
+    let aiUsed = false;
+    
+    try {
+      logger.info('Analyzing feedback with AI', { appointmentID, studentID });
+      const aiPrompt = `Analyze this student feedback about a counseling session and provide structured analysis:
 
 Feedback: "${feedback}"
 
@@ -65,50 +69,77 @@ Return a JSON object with the following structure:
 
 Be objective, constructive, and professional. Base the rating on overall satisfaction expressed.`;
 
-    const aiResult = await queryAI(aiPrompt, 'analyzeFeedback', {
-      temperature: 0.3, // Lower temperature for more consistent analysis
-      maxTokens: 300
-    });
-
-    // Parse AI response
-    let aiAnalysis;
-    try {
-      // Extract JSON from response (handle cases where AI adds markdown code blocks)
-      let jsonStr = aiResult.response.trim();
-      if (jsonStr.startsWith('```json')) {
-        jsonStr = jsonStr.substring(7);
-      }
-      if (jsonStr.startsWith('```')) {
-        jsonStr = jsonStr.substring(3);
-      }
-      if (jsonStr.endsWith('```')) {
-        jsonStr = jsonStr.substring(0, jsonStr.length - 3);
-      }
-      jsonStr = jsonStr.trim();
-
-      aiAnalysis = JSON.parse(jsonStr);
-
-      // Validate AI analysis structure
-      if (!aiAnalysis.rating || !aiAnalysis.sentiment || !aiAnalysis.summary) {
-        throw new Error('Incomplete AI analysis');
-      }
-
-      // Validate rating range
-      if (aiAnalysis.rating < 1 || aiAnalysis.rating > 5) {
-        aiAnalysis.rating = 3; // Default to neutral
-      }
-
-      // Validate sentiment
-      if (!['positive', 'neutral', 'negative'].includes(aiAnalysis.sentiment)) {
-        aiAnalysis.sentiment = 'neutral';
-      }
-    } catch (parseError) {
-      logger.error('Failed to parse AI analysis', {
-        error: parseError.message,
-        response: aiResult.response
+      const aiResult = await queryAI(aiPrompt, 'analyzeFeedback', {
+        temperature: 0.3, // Lower temperature for more consistent analysis
+        maxTokens: 300
       });
 
-      // Fallback to default values
+      // Parse AI response
+      try {
+        // Extract JSON from response (handle cases where AI adds markdown code blocks)
+        let jsonStr = aiResult.response.trim();
+        if (jsonStr.startsWith('```json')) {
+          jsonStr = jsonStr.substring(7);
+        }
+        if (jsonStr.startsWith('```')) {
+          jsonStr = jsonStr.substring(3);
+        }
+        if (jsonStr.endsWith('```')) {
+          jsonStr = jsonStr.substring(0, jsonStr.length - 3);
+        }
+        jsonStr = jsonStr.trim();
+
+        aiAnalysis = JSON.parse(jsonStr);
+
+        // Validate AI analysis structure
+        if (!aiAnalysis.rating || !aiAnalysis.sentiment || !aiAnalysis.summary) {
+          throw new Error('Incomplete AI analysis');
+        }
+
+        // Validate rating range
+        if (aiAnalysis.rating < 1 || aiAnalysis.rating > 5) {
+          aiAnalysis.rating = 3; // Default to neutral
+        }
+
+        // Validate sentiment
+        if (!['positive', 'neutral', 'negative'].includes(aiAnalysis.sentiment)) {
+          aiAnalysis.sentiment = 'neutral';
+        }
+        
+        aiUsed = true;
+        
+        // Log AI interaction
+        await appointmentsModel.logAIInteraction({
+          userId: req.user.id,
+          userType: req.user.role,
+          prompt: aiPrompt,
+          response: aiResult.response,
+          mode: 'analyzeFeedback',
+          duration: 0, // Duration tracked by aiClient
+          cached: aiResult.cached
+        });
+      } catch (parseError) {
+        logger.error('Failed to parse AI analysis', {
+          error: parseError.message,
+          response: aiResult.response
+        });
+
+        // Fallback to default values
+        aiAnalysis = {
+          rating: 3,
+          sentiment: 'neutral',
+          summary: 'Thank you for your feedback.',
+          improvementSuggestions: null
+        };
+      }
+    } catch (aiError) {
+      // AI service not available - use default values and continue
+      logger.warn('AI analysis unavailable, using default values', {
+        error: aiError.message,
+        appointmentID,
+        studentID
+      });
+      
       aiAnalysis = {
         rating: 3,
         sentiment: 'neutral',
@@ -129,24 +160,14 @@ Be objective, constructive, and professional. Base the rating on overall satisfa
       improvementSuggestions: aiAnalysis.improvementSuggestions || null
     });
 
-    // Log AI interaction
-    await appointmentsModel.logAIInteraction({
-      userId: req.user.id,
-      userType: req.user.role,
-      prompt: aiPrompt,
-      response: aiResult.response,
-      mode: 'analyzeFeedback',
-      duration: 0, // Duration tracked by aiClient
-      cached: aiResult.cached
-    });
-
     logger.info('Feedback submitted successfully', {
       feedbackId: createdFeedback.FeedbackID,
       appointmentID,
       studentID,
       counselorID,
       rating: aiAnalysis.rating,
-      sentiment: aiAnalysis.sentiment
+      sentiment: aiAnalysis.sentiment,
+      aiUsed
     });
 
     // Return analysis to frontend
@@ -157,10 +178,11 @@ Be objective, constructive, and professional. Base the rating on overall satisfa
         analysis: {
           rating: aiAnalysis.rating,
           sentiment: aiAnalysis.sentiment,
-          summary: aiAnalysis.summary
+          summary: aiAnalysis.summary,
+          aiAnalyzed: aiUsed
         }
       },
-      'Feedback submitted and analyzed successfully',
+      aiUsed ? 'Feedback submitted and analyzed successfully' : 'Feedback submitted successfully',
       201
     );
   } catch (error) {
@@ -168,11 +190,6 @@ Be objective, constructive, and professional. Base the rating on overall satisfa
       error: error.message,
       userId: req.user.id
     });
-
-    if (error.message.includes('AI service')) {
-      return sendError(res, 'AI analysis temporarily unavailable. Please try again.', 503);
-    }
-
     next(error);
   }
 }
