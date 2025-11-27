@@ -25,7 +25,7 @@ let geminiApiKey = null;
 async function initializeGemini() {
   // Try environment variable first, then Key Vault
   geminiApiKey = process.env.GEMINI_API_KEY || await getSecret('GEMINI-API-KEY', 'GEMINI_API_KEY');
-  
+
   if (!geminiApiKey) {
     logger.warn('Google Gemini API key not configured');
   } else {
@@ -58,16 +58,16 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('Invalid prompt');
   }
-  
+
   const validModes = ['chat', 'summarizeFeedback', 'recommendation', 'wellbeing_tips', 'analyzeFeedback'];
   if (!validModes.includes(mode)) {
     throw new Error(`Invalid mode. Must be one of: ${validModes.join(', ')}`);
   }
-  
+
   // Check cache first
   const cacheKey = generateCacheKey(prompt, mode);
   const cachedResponse = aiCache.get(cacheKey);
-  
+
   if (cachedResponse) {
     logger.debug('AI cache hit', { mode, promptLength: prompt.length });
     return {
@@ -76,17 +76,17 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       mode
     };
   }
-  
+
   // Check if API key is available
   if (!geminiApiKey) {
     logger.error('Google Gemini API key not available');
     throw new Error('AI service not configured');
   }
-  
+
   // Build system message based on mode
   let systemMessage = '';
   let maxTokens = options.maxTokens || 500;
-  
+
   switch (mode) {
     case 'chat':
       systemMessage = 'You are a helpful AI assistant for a counselor appointment scheduler. Provide concise, supportive, and helpful responses. Never provide medical advice or diagnoses. If a student mentions serious mental health concerns, suicide, self-harm, or crisis situations, always recommend they contact a real counselor immediately or call emergency services. Keep responses positive and safe.';
@@ -105,13 +105,13 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       systemMessage = 'You are an AI assistant that summarizes student feedback. Extract key points, sentiment, and actionable insights. Be concise.';
       break;
   }
-  
+
   // Prepare request for Gemini API
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-  
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
   // Combine system message and user prompt for Gemini
   const combinedPrompt = `${systemMessage}\n\nUser Query: ${prompt}`;
-  
+
   const requestBody = {
     contents: [{
       parts: [{
@@ -124,9 +124,9 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       maxOutputTokens: maxTokens
     }
   };
-  
+
   const startTime = Date.now();
-  
+
   try {
     const response = await axios.post(endpoint, requestBody, {
       headers: {
@@ -134,13 +134,13 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       },
       timeout: 30000 // 30 second timeout
     });
-    
+
     const duration = Date.now() - startTime;
     const aiResponse = response.data.candidates[0].content.parts[0].text;
-    
+
     // Cache the response
     aiCache.set(cacheKey, aiResponse);
-    
+
     logger.info('Gemini AI request completed', {
       mode,
       duration,
@@ -148,7 +148,7 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       responseLength: aiResponse.length,
       model: 'gemini-1.5-flash'
     });
-    
+
     return {
       response: aiResponse,
       cached: false,
@@ -157,7 +157,7 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
     };
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('AI request failed', {
       mode,
       duration,
@@ -165,7 +165,7 @@ export async function queryAI(prompt, mode = 'chat', options = {}) {
       status: error.response?.status,
       data: error.response?.data
     });
-    
+
     // Provide user-friendly error messages
     if (error.response?.status === 401) {
       throw new Error('AI service authentication failed');

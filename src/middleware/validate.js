@@ -22,16 +22,16 @@ export function isValidEmail(email) {
  */
 export function validatePassword(password) {
   const errors = [];
-  
+
   if (password.length < 8) {
     errors.push('Password must be at least 8 characters long');
   }
-  
+
   // Optional: Add more password requirements
   // if (!/[A-Z]/.test(password)) {
   //   errors.push('Password must contain at least one uppercase letter');
   // }
-  
+
   return {
     valid: errors.length === 0,
     errors
@@ -45,7 +45,7 @@ export function validatePassword(password) {
  */
 export function sanitizeString(input) {
   if (typeof input !== 'string') return input;
-  
+
   return input
     .trim()
     .replace(/[<>]/g, '') // Remove < and >
@@ -58,17 +58,17 @@ export function sanitizeString(input) {
 export function validateStudentRegistration(req, res, next) {
   const { name, email, password } = req.body;
   const errors = [];
-  
+
   // Validate name
   if (!name || typeof name !== 'string' || name.trim().length < 2) {
     errors.push({ field: 'name', message: 'Name must be at least 2 characters' });
   }
-  
+
   // Validate email
   if (!email || !isValidEmail(email)) {
     errors.push({ field: 'email', message: 'Valid email is required' });
   }
-  
+
   // Validate password
   if (!password) {
     errors.push({ field: 'password', message: 'Password is required' });
@@ -81,15 +81,15 @@ export function validateStudentRegistration(req, res, next) {
       })));
     }
   }
-  
+
   if (errors.length > 0) {
     return sendValidationError(res, errors);
   }
-  
+
   // Sanitize inputs
   req.body.name = sanitizeString(name);
   req.body.email = email.trim().toLowerCase();
-  
+
   next();
 }
 
@@ -99,17 +99,17 @@ export function validateStudentRegistration(req, res, next) {
 export function validateCounselorRegistration(req, res, next) {
   const { name, email, password, counselorType, bio } = req.body;
   const errors = [];
-  
+
   // Validate name
   if (!name || typeof name !== 'string' || name.trim().length < 2) {
     errors.push({ field: 'name', message: 'Name must be at least 2 characters' });
   }
-  
+
   // Validate email
   if (!email || !isValidEmail(email)) {
     errors.push({ field: 'email', message: 'Valid email is required' });
   }
-  
+
   // Validate password
   if (!password) {
     errors.push({ field: 'password', message: 'Password is required' });
@@ -122,22 +122,22 @@ export function validateCounselorRegistration(req, res, next) {
       })));
     }
   }
-  
+
   // Validate counselor type
   const validTypes = ['Academic', 'Career', 'Personal', 'Mental Health'];
   if (!counselorType || !validTypes.includes(counselorType)) {
     errors.push({ field: 'counselorType', message: 'Valid counselor type is required' });
   }
-  
+
   if (errors.length > 0) {
     return sendValidationError(res, errors);
   }
-  
+
   // Sanitize inputs
   req.body.name = sanitizeString(name);
   req.body.email = email.trim().toLowerCase();
   req.body.bio = bio ? sanitizeString(bio) : '';
-  
+
   next();
 }
 
@@ -147,21 +147,21 @@ export function validateCounselorRegistration(req, res, next) {
 export function validateLogin(req, res, next) {
   const { email, password } = req.body;
   const errors = [];
-  
+
   if (!email || !isValidEmail(email)) {
     errors.push({ field: 'email', message: 'Valid email is required' });
   }
-  
+
   if (!password || typeof password !== 'string') {
     errors.push({ field: 'password', message: 'Password is required' });
   }
-  
+
   if (errors.length > 0) {
     return sendValidationError(res, errors);
   }
-  
+
   req.body.email = email.trim().toLowerCase();
-  
+
   next();
 }
 
@@ -171,16 +171,16 @@ export function validateLogin(req, res, next) {
 export function validateAppointment(req, res, next) {
   const { studentID, counselorID, date, time } = req.body;
   const errors = [];
-  
+
   // Validate IDs
   if (!studentID || !Number.isInteger(studentID) || studentID <= 0) {
     errors.push({ field: 'studentID', message: 'Valid student ID is required' });
   }
-  
+
   if (!counselorID || !Number.isInteger(counselorID) || counselorID <= 0) {
     errors.push({ field: 'counselorID', message: 'Valid counselor ID is required' });
   }
-  
+
   // Validate date (YYYY-MM-DD format)
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!date || !dateRegex.test(date)) {
@@ -189,12 +189,12 @@ export function validateAppointment(req, res, next) {
     const appointmentDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (appointmentDate < today) {
       errors.push({ field: 'date', message: 'Cannot book appointments in the past' });
     }
   }
-  
+
   // Validate time (HH:MM or HH:MM:SS format)
   // HTML5 time input returns HH:MM, but we also accept HH:MM:SS
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/;
@@ -206,11 +206,11 @@ export function validateAppointment(req, res, next) {
       req.body.time = time + ':00';
     }
   }
-  
+
   if (errors.length > 0) {
     return sendValidationError(res, errors);
   }
-  
+
   next();
 }
 
@@ -220,22 +220,22 @@ export function validateAppointment(req, res, next) {
 export function validateAIQuery(req, res, next) {
   const { prompt, mode } = req.body;
   const errors = [];
-  
+
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 3) {
     errors.push({ field: 'prompt', message: 'Prompt must be at least 3 characters' });
   }
-  
-  const validModes = ['chat', 'summarizeFeedback', 'recommendation'];
+
+  const validModes = ['chat', 'summarizeFeedback', 'recommendation', 'wellbeing_tips', 'analyzeFeedback'];
   if (!mode || !validModes.includes(mode)) {
-    errors.push({ field: 'mode', message: 'Invalid mode. Must be: chat, summarizeFeedback, or recommendation' });
+    errors.push({ field: 'mode', message: 'Invalid mode. Must be: chat, summarizeFeedback, recommendation, wellbeing_tips, or analyzeFeedback' });
   }
-  
+
   if (errors.length > 0) {
     return sendValidationError(res, errors);
   }
-  
+
   req.body.prompt = sanitizeString(prompt);
-  
+
   next();
 }
 
