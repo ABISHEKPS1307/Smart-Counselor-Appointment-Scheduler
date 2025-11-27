@@ -80,6 +80,7 @@ jobs:
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --ingress-target-port 8080 \
             --set-env-vars \
               NODE_ENV=production \
               PORT=8080 \
@@ -157,5 +158,7 @@ jobs:
           done
           
           echo "❌ Health check failed"
-          echo "Check logs: az containerapp logs show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --follow"
+          echo "Fetching container logs..."
+          # Try to get logs, but don't fail if it fails (e.g. if log analytics not configured)
+          az containerapp logs show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --follow=false --tail 50 || echo "Could not fetch logs"
           exit 1
