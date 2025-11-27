@@ -80,6 +80,10 @@ jobs:
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --min-replicas 1 \
+            --max-replicas 3 \
+            --cpu 0.5 \
+            --memory 1.0Gi \
             --set-env-vars \
               NODE_ENV=production \
               PORT=8080 \
@@ -122,13 +126,13 @@ jobs:
       
       - name: Wait for Deployment
         run: |
-          echo "⏳ Waiting 45 seconds for new revision to start..."
-          sleep 45
+          echo "⏳ Waiting 60 seconds for new revision to start..."
+          sleep 60
       
       - name: Health Check
         run: |
           APP_URL="${{ steps.get-url.outputs.app_url }}"
-          MAX_ATTEMPTS=10
+          MAX_ATTEMPTS=15
           ATTEMPT=0
           
           echo "Testing health endpoint: $APP_URL/api/health"
