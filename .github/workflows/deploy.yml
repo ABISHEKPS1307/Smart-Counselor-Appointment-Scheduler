@@ -80,7 +80,7 @@ jobs:
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --ingress-target-port 8080 \
+            --target-port 8080 \
             --set-env-vars \
               NODE_ENV=production \
               PORT=8080 \
